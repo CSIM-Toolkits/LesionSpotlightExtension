@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<executable>
+  <category>Examples</category>
+  <title>LabelRefinement</title>
+  <description><![CDATA[This is a CLI module that can be bundled in an extension]]></description>
+  <version>0.0.1</version>
+  <documentation-url>http://www.example.com/Slicer/Modules/LabelRefinement</documentation-url>
+  <license>Slicer</license>
+  <contributor>FirstName LastName (Institution), FirstName LastName (Institution)</contributor>
+  <acknowledgements>This work was partially funded by NIH grant NXNNXXNNNNNN-NNXN</acknowledgements>
+  <parameters>
+    <label>IO</label>
+    <description><![CDATA[Input/output parameters]]></description>
+    <image>
+      <name>inputVolume</name>
+      <label>Input Volume</label>
+      <channel>input</channel>
+      <index>0</index>
+      <description><![CDATA[Input volume]]></description>
+    </image>
+    <image type="label">
+      <name>outputVolume</name>
+      <label>Output Volume</label>
+      <channel>output</channel>
+      <index>1</index>
+      <description><![CDATA[Output Volume]]></description>
+    </image>
+  </parameters>
+  <parameters>
+    <label>Refinement Parameters</label>
+    <description><![CDATA[Refinement parameters]]></description>
+    <double>
+      <name>threshold</name>
+      <longflag>--thr</longflag>
+      <flag>t</flag>
+      <label>Threshold</label>
+      <description><![CDATA[A threshold value]]></description>
+      <default>0.95</default>
+    </double>
+    <integer>
+      <name>lesionMinSize</name>
+      <longflag>--minLesion</longflag>
+      <flag>l</flag>
+      <label>Minimum Lesion Size</label>
+      <description><![CDATA[The minimum size (pixels) that is considered as a true lesion.]]></description>
+      <default>5</default>
+    </integer>
+  </parameters>
+</executable>

@@ -20,6 +20,7 @@ include(${Slicer_USE_FILE})
 # Extension modules
 add_subdirectory(HyperLesionSegmentation)
 add_subdirectory(LogisticContrastEnhancement)
+add_subdirectory(LabelRefinement)
 ## NEXT_MODULE
 
 #-----------------------------------------------------------------------------

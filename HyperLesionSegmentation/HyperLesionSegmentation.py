@@ -2,6 +2,7 @@ import os
 import sys
 import platform
 import unittest
+from ctypes.util import find_library
 
 from os.path import expanduser
 
@@ -165,26 +166,29 @@ class HyperLesionSegmentationWidget(ScriptedLoadableModuleWidget):
     # Layout within the dummy collapsible button
     parametersRegistrationFormLayout = qt.QFormLayout(parametersRegistrationCollapsibleButton)
 
-    # #
-    # # Percentage Sampling Area
-    # #
-    # self.setPercSamplingQWidget = qt.QDoubleSpinBox()
-    # self.setPercSamplingQWidget.setMaximum(1)
-    # self.setPercSamplingQWidget.setMinimum(0.0001)
-    # self.setPercSamplingQWidget.setSingleStep(0.001)
-    # self.setPercSamplingQWidget.setValue(0.002)
-    # self.setPercSamplingQWidget.setToolTip("Percentage of voxel used in registration.")
-    # parametersRegistrationFormLayout.addRow("Percentage Of Samples ", self.setPercSamplingQWidget)
+    #
+    # Percentage Sampling Area
+    #
+    self.setPercSamplingQWidget = qt.QDoubleSpinBox()
+    self.setPercSamplingQWidget.setDecimals(4)
+    self.setPercSamplingQWidget.setMaximum(1)
+    self.setPercSamplingQWidget.setMinimum(0.0001)
+    self.setPercSamplingQWidget.setSingleStep(0.001)
+    self.setPercSamplingQWidget.setValue(0.002)
+    self.setPercSamplingQWidget.setToolTip("Percentage of voxel used in registration.")
+    parametersRegistrationFormLayout.addRow("Percentage Of Samples ", self.setPercSamplingQWidget)
 
-    # #
-    # # Initiation Method Area
-    # #
-    # self.setThresholdLFMethodBooleanWidget = ctk.ctkComboBox()
-    # self.setThresholdLFMethodBooleanWidget.addItem("Off")
-    # self.setThresholdLFMethodBooleanWidget.addItem("CenterOfHead")
-    # self.setThresholdLFMethodBooleanWidget.setToolTip(
-    #   "")
-    # parametersRegistrationFormLayout.addRow("Initiation Method ", self.setThresholdLFMethodBooleanWidget)
+    #
+    # Initiation Method Area
+    #
+    self.setInitiationRegistrationBooleanWidget = ctk.ctkComboBox()
+    self.setInitiationRegistrationBooleanWidget.addItem("useMomentsAlign")
+    self.setInitiationRegistrationBooleanWidget.addItem("Off")
+    self.setInitiationRegistrationBooleanWidget.addItem("useCenterOfHeadAlign")
+    self.setInitiationRegistrationBooleanWidget.addItem("useGeometryAlign")
+    self.setInitiationRegistrationBooleanWidget.setToolTip(
+      "Initialization method used for the MNI152 registration.")
+    parametersRegistrationFormLayout.addRow("Initiation Method ", self.setInitiationRegistrationBooleanWidget)
 
     #
     # Interpolation Method Area
@@ -194,8 +198,8 @@ class HyperLesionSegmentationWidget(ScriptedLoadableModuleWidget):
     self.setInterpolationMethodBooleanWidget.addItem("BSpline")
     self.setInterpolationMethodBooleanWidget.addItem("NearestNeighbor")
     self.setInterpolationMethodBooleanWidget.setToolTip(
-      "Choose the interpolation method used to register the input images into the standard space. Options: Linear, Tri-linear and Spline")
-    parametersAdvancedFormLayout.addRow("Interpolation ", self.setInterpolationMethodBooleanWidget)
+      "Choose the interpolation method used to register the standard space to input image space. Options: Linear, NearestNeighbor, B-Spline")
+    parametersRegistrationFormLayout.addRow("Interpolation ", self.setInterpolationMethodBooleanWidget)
 
     # TODO Terminar de colocar o coregistro
 
@@ -220,11 +224,47 @@ class HyperLesionSegmentationWidget(ScriptedLoadableModuleWidget):
       "Choose the threhsold method for the lesion enhancement procedure. Options: MaximumEntropy, Otsu")
     parametersLesionEnhancementFormLayout.addRow("Threshold Method ", self.setThresholdLFMethodBooleanWidget)
 
+    #
+    # Number Of Bins
+    #
+    self.setNumberOfBinsWidget = qt.QSpinBox()
+    self.setNumberOfBinsWidget.setMaximum(256)
+    self.setNumberOfBinsWidget.setMinimum(10)
+    self.setNumberOfBinsWidget.setValue(128)
+    self.setNumberOfBinsWidget.setToolTip("Number Of Bins for the histogram calculation")
+    parametersLesionEnhancementFormLayout.addRow("Number Of Bins ", self.setNumberOfBinsWidget)
 
+    #
+    # Flip Object
+    #
+    self.setFlipObjectWidget = ctk.ctkCheckBox()
+    self.setFlipObjectWidget.setChecked(False)
+    self.setFlipObjectWidget.setToolTip(
+      "Flip object in the image. This inform if the dark part of the histogram that should be enhanced.")
+    parametersLesionEnhancementFormLayout.addRow("Flip Object",
+                                      self.setFlipObjectWidget)
 
+    #
+    # Threshold Label Map
+    #
+    self.setThrehsoldLabelMapWidget = qt.QDoubleSpinBox()
+    # self.setThrehsoldLabelMapWidget.setDecimals(4)
+    self.setThrehsoldLabelMapWidget.setMaximum(1)
+    self.setThrehsoldLabelMapWidget.setMinimum(0)
+    self.setThrehsoldLabelMapWidget.setSingleStep(0.01)
+    self.setThrehsoldLabelMapWidget.setValue(0.9)
+    self.setThrehsoldLabelMapWidget.setToolTip("Threshold for the lesion label Map.")
+    parametersLesionEnhancementFormLayout.addRow("Label Map Threshold ", self.setThrehsoldLabelMapWidget)
 
-
-
+    #
+    # Minimum Lesion Size
+    #
+    self.setMinimumLesionWidget = qt.QSpinBox()
+    # self.setMinimumLesionWidget.setMaximum(256)
+    self.setMinimumLesionWidget.setMinimum(1)
+    self.setMinimumLesionWidget.setValue(5)
+    self.setMinimumLesionWidget.setToolTip("Set the minimum lesio size in order to be considered as a true lesion. This value is given in number of pixels.")
+    parametersLesionEnhancementFormLayout.addRow("Minimum Lesion Size ", self.setMinimumLesionWidget)
 
 
     # connections
@@ -250,7 +290,17 @@ class HyperLesionSegmentationWidget(ScriptedLoadableModuleWidget):
     # imageThreshold = self.imageThresholdSliderWidget.value
     logic.run(self.inputFLAIRSelector.currentNode()
               ,self.outputSelector.currentNode()
+              ,self.setPercSamplingQWidget
+              ,self.setInitiationRegistrationBooleanWidget
               ,self.setInterpolationMethodBooleanWidget
+              ,self.setNumberOfBinsWidget
+              ,self.setFlipObjectWidget
+              ,self.setThresholdLFMethodBooleanWidget
+              ,self.setFilteringCondutanceWidget
+              ,self.setFilteringNumberOfIterationWidget
+              ,self.setFilteringQWidget
+              ,self.setThrehsoldLabelMapWidget
+              ,self.setMinimumLesionWidget
               )
 
 #
@@ -280,22 +330,23 @@ class HyperLesionSegmentationLogic(ScriptedLoadableModuleLogic):
       return False
     return True
 
-  def isValidInputOutputData(self, inputVolumeNode, outputVolumeNode):
+  def isValidInputOutputData(self, inputFLAIRVolume, outputLabel):
     """Validates if the output is not the same as input
     """
-    if not inputVolumeNode:
+    if not inputFLAIRVolume:
       logging.debug('isValidInputOutputData failed: no input volume node defined')
       return False
-    if not outputVolumeNode:
+    if not outputLabel:
       logging.debug('isValidInputOutputData failed: no output volume node defined')
       return False
-    if inputVolumeNode.GetID()==outputVolumeNode.GetID():
+    if inputFLAIRVolume.GetID()==outputLabel.GetID():
       logging.debug('isValidInputOutputData failed: input and output volume is the same. Create a new volume for output to avoid this error.')
       return False
     return True
 
 
-  def run(self, inputFLAIRVolume, outputLabel):
+  def run(self, inputFLAIRVolume, outputLabel, sampling, initiation, interpolation, numberOfBins, flipObject,thresholdMethod, conductance, nIter,
+          qValue, labelThreshold, minimumLesionSize):
     """
     Run the actual algorithm
     """
@@ -315,8 +366,7 @@ class HyperLesionSegmentationLogic(ScriptedLoadableModuleLogic):
     else:
       home = expanduser("~")
 
-    MNITemplate = slicer.util.loadVolume(
-      home + '/MSLesionTrack-Data/DTI-Templates/MNI152_T1_1mm_brain.nii.gz')
+    slicer.util.loadVolume(home + '/HyperLesion-Data/MNI152_T1_1mm_brain.nii.gz')
     MNITemplateNodeName = "MNI152_T1_1mm_brain"
 
     # Parameter(0 / 0): fixedVolume(Fixed
@@ -344,40 +394,33 @@ class HyperLesionSegmentationLogic(ScriptedLoadableModuleLogic):
     #
     slicer.util.showStatusMessage("Step 1/...: MNI152 to T2-FLAIR registration...")
     registrationFLAIR2T1Transform = slicer.vtkMRMLLinearTransformNode()
-    # slicer.mrmlScene.AddNode(registrationFLAIR2T1Transform)
+    slicer.mrmlScene.AddNode(registrationFLAIR2T1Transform)
     MNINativeVolume = slicer.vtkMRMLScalarVolumeNode()
-    # slicer.mrmlScene.AddNode(inputFLAIRVolume_reg)
+    slicer.mrmlScene.AddNode(MNINativeVolume)
     regParams = {}
     regParams["fixedVolume"] = inputFLAIRVolume.GetID()
-    regParams["movingVolume"] = slicer.util.getNode(DTITemplateNodeName)
-    regParams["samplingPercentage"] = 0.02
+    regParams["movingVolume"] = slicer.util.getNode(MNITemplateNodeName)
+    regParams["samplingPercentage"] = sampling.value
     regParams["splineGridSize"] = '14,10,12'
     regParams["outputVolume"] = MNINativeVolume.GetID()
     regParams["linearTransform"] = registrationFLAIR2T1Transform.GetID()
-    regParams["initializeTransformMode"] = "useMomentsAlign"
+    regParams["initializeTransformMode"] = initiation.currentText
     regParams["useRigid"] = True
     regParams["useAffine"] = True
-    regParams["interpolationMode"] = interpolationMethod.currentText
-    regParams["numberOfSamples"] = 200000
+    regParams["interpolationMode"] = interpolation.currentText
 
     slicer.cli.run(slicer.modules.brainsfit, None, regParams, wait_for_completion=True)
+
 
     #################################################################################################################
     #                                              White Matter Mask                                                #
     #################################################################################################################
-
-    # Parameter(0 / 0): inputVolume(Input
-    # Parameter(0 / 1): outputLabel(Brain
-    # Parameter(1 / 0): oneTissue(Separate
-    # Parameter (1 / 1): typeTissue(Tissue)
-    # Parameter(2 / 0): segMethod(Segmentation
-    # Parameter(2 / 1): numClass(Number
     #
     # White Matter Mask.
     #
     slicer.util.showStatusMessage("Step 2/...: Extracting the White Matter mask...")
-    wmLabelVolume = slicer.vtkMRMLLabelVolumeNode()
-    # slicer.mrmlScene.AddNode(inputFLAIRVolume_reg)
+    wmLabelVolume = slicer.vtkMRMLLabelMapVolumeNode()
+    slicer.mrmlScene.AddNode(wmLabelVolume)
     regParams = {}
     regParams["inputVolume"] = MNINativeVolume.GetID()
     regParams["outputLabel"] = wmLabelVolume.GetID()
@@ -389,8 +432,87 @@ class HyperLesionSegmentationLogic(ScriptedLoadableModuleLogic):
     slicer.cli.run(slicer.modules.braintissuesmask, None, regParams, wait_for_completion=True)
 
     #################################################################################################################
-    #                                              White Matter Mask                                                #
+    #                                             Bias Field Correction                                             #
     #################################################################################################################
+    slicer.util.showStatusMessage("Step 3/...: Bias field correction...")
+    # Parameter(0 / 0): inputImageName(Input
+    # Image)
+    # Parameter(0 / 1): maskImageName(Mask
+    # Image)
+    # Parameter(0 / 2): outputImageName(Output
+    # Volume)
+    # Parameter(0 / 3): outputBiasFieldName(Output
+    # bias
+
+    inputFLAIRBiasVolume = slicer.vtkMRMLScalarVolumeNode()
+    slicer.mrmlScene.AddNode(inputFLAIRBiasVolume)
+    regParams = {}
+    regParams["inputImageName"] = inputFLAIRVolume.GetID()
+    regParams["maskImageName"] = wmLabelVolume.GetID()
+    regParams["outputImageName"] = inputFLAIRBiasVolume.GetID()
+
+    slicer.cli.run(slicer.modules.n4itkbiasfieldcorrection, None, regParams, wait_for_completion=True)
+
+    #################################################################################################################
+    #                                              Noise Attenuation                                                #
+    #################################################################################################################
+    slicer.util.showStatusMessage("Step 5/...: Decreasing image noise level...")
+    # Parameter(0 / 0): inputVolume(Input
+    # Volume)
+    # Parameter(0 / 1): outputVolume(Output
+    # Volume)
+    # Parameter(1 / 0): condutance(Condutance)
+    # Parameter(1 / 1): iterations(Number
+    # of
+    # Iterations)
+    # Parameter(1 / 2): timeStep(Time
+    # Step)
+    # Parameter(1 / 3): q(Anomalous
+    # Parameter)
+    inputFLAIRBiasSmoothVolume = slicer.vtkMRMLScalarVolumeNode()
+    slicer.mrmlScene.AddNode(inputFLAIRBiasSmoothVolume)
+    regParams = {}
+    regParams["inputVolume"] = inputFLAIRBiasVolume.GetID()
+    regParams["outputVolume"] = inputFLAIRBiasSmoothVolume.GetID()
+    regParams["condutance"] = conductance.value
+    regParams["iterations"] = nIter.value
+    regParams["q"] = qValue.value
+
+    slicer.cli.run(slicer.modules.aadimagefilter, None, regParams, wait_for_completion=True)
+
+    #################################################################################################################
+    #                                              Lesion Enhancement                                               #
+    #################################################################################################################
+    # Parameter(0 / 0): inputVolume(Input
+    # Parameter(0 / 1): maskVolume(Mask
+    # Parameter(0 / 2): outputVolume(Output
+    # Parameter(1 / 0): numberOfBins(Number
+    # Parameter(1 / 1): flipObject(Flip
+    # Parameter(1 / 2): thrType(Threshold
+    slicer.util.showStatusMessage("Step 4/...: Enhancing lesion contrast...")
+    inputFLAIRBiasSmoothLesionEnhancedVolume = slicer.vtkMRMLScalarVolumeNode()
+    slicer.mrmlScene.AddNode(inputFLAIRBiasSmoothLesionEnhancedVolume)
+    regParams = {}
+    regParams["inputVolume"] = inputFLAIRBiasSmoothVolume.GetID()
+    regParams["outputVolume"] = inputFLAIRBiasSmoothLesionEnhancedVolume.GetID()
+    regParams["maskVolume"] = wmLabelVolume.GetID()
+    regParams["numberOfBins"] = numberOfBins.value
+    regParams["flipObject"] = flipObject.isChecked()
+    regParams["thrType"] = thresholdMethod.currentText
+
+    slicer.cli.run(slicer.modules.logisticcontrastenhancement, None, regParams, wait_for_completion=True)
+
+
+    #################################################################################################################
+    #                                              Lesion Segmentation                                              #
+    #################################################################################################################
+    slicer.util.showStatusMessage("Step 5/...: Lesion map refinement...")
+    regParams = {}
+    regParams["inputVolume"]= inputFLAIRBiasSmoothLesionEnhancedVolume.GetID()
+    regParams["outputVolume"] = outputLabel.GetID()
+    regParams["threshold"]= labelThreshold.value
+    regParams["lesionMinSize"] = minimumLesionSize.value
+    slicer.cli.run(slicer.modules.labelrefinement, None, regParams, wait_for_completion=True)
 
 
     slicer.util.showStatusMessage("Processing completed")
