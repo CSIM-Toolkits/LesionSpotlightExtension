@@ -26,10 +26,14 @@ file(MAKE_DIRECTORY ~/HyperLesion-Data)
 endif (UNIX)
 
 if (WIN32)
-file(MAKE_DIRECTORY %userprofile%\\HyperLesion-Data)
+file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}\\HyperLesion-Data\\MNI152_T1_1mm_brain.nii.gz DESTINATION $ENV{HOME}\\HyperLesion-Data\\)
+file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}\\HyperLesion-Data\\MNI152_T1_1mm.nii.gz DESTINATION $ENV{HOME}\\HyperLesion-Data\\)
+file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}\\HyperLesion-Data\\MNI152_T1_WhiteMatter.nii.gz DESTINATION $ENV{HOME}\\HyperLesion-Data\\)
 endif (WIN32)
 if (UNIX)
 file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/HyperLesion-Data/MNI152_T1_1mm_brain.nii.gz DESTINATION $ENV{HOME}/HyperLesion-Data/)
+file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/HyperLesion-Data/MNI152_T1_1mm.nii.gz DESTINATION $ENV{HOME}/HyperLesion-Data/)
+file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/HyperLesion-Data/MNI152_T1_WhiteMatter.nii.gz DESTINATION $ENV{HOME}/HyperLesion-Data/)
 endif (UNIX)
 
 #-----------------------------------------------------------------------------

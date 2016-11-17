@@ -71,7 +71,10 @@ int DoIt( int argc, char * argv[], T )
         enhParameters->SetThresholdMethod(LogisticEnhancementType::YEN);
     }else if (thrType=="IsoData"){
         enhParameters->SetThresholdMethod(LogisticEnhancementType::ISODATA);
+    }else if (thrType=="Intermodes"){
+        enhParameters->SetThresholdMethod(LogisticEnhancementType::INTERMODES);
     }
+
     enhParameters->Update();
     std::cout<<"Beta: "<<enhParameters->GetBeta()<<" - Alpha: "<<enhParameters->GetAlpha()<<std::endl;
 

@@ -70,6 +70,7 @@
 	      <element>Moments</element>
 	      <element>Yen</element>
 	      <element>IsoData</element>
+              <element>Intermodes</element>
 	</string-enumeration>
 </parameters>
 </executable>
