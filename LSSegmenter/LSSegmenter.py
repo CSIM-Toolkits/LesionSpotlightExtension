@@ -11,17 +11,17 @@ from slicer.ScriptedLoadableModule import *
 import logging
 
 #
-# HyperLesionSegmentation
+# LSSegmenter
 #
 
-class HyperLesionSegmentation(ScriptedLoadableModule):
+class LSSegmenter(ScriptedLoadableModule):
   """Uses ScriptedLoadableModule base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent) # TODO EDITAR QUANDO ESTIVER PRONTO - DEFINIR NOME!!!
-    self.parent.title = "HyperLesionSegmentation" # TODO make this more human readable by adding spaces
+    self.parent.title = "LS Segmenter" # TODO make this more human readable by adding spaces
     self.parent.categories = ["Examples"]
     self.parent.dependencies = []
     self.parent.contributors = ["John Doe (AnyWare Corp.)"] # replace with "Firstname Lastname (Organization)"
@@ -35,10 +35,10 @@ class HyperLesionSegmentation(ScriptedLoadableModule):
 """ # replace with organization, grant and thanks.
 
 #
-# HyperLesionSegmentationWidget
+# LSSegmenterWidget
 #
 
-class HyperLesionSegmentationWidget(ScriptedLoadableModuleWidget):
+class LSSegmenterWidget(ScriptedLoadableModuleWidget):
   """Uses ScriptedLoadableModuleWidget base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
@@ -297,7 +297,7 @@ class HyperLesionSegmentationWidget(ScriptedLoadableModuleWidget):
     self.applyButton.enabled = self.inputFLAIRSelector.currentNode() and self.outputSelector.currentNode()
 
   def onApplyButton(self):
-    logic = HyperLesionSegmentationLogic()
+    logic = LSSegmenterLogic()
     # enableScreenshotsFlag = self.enableScreenshotsFlagCheckBox.checked
     # imageThreshold = self.imageThresholdSliderWidget.value
     logic.run(self.inputT1Selector.currentNode()
@@ -319,10 +319,10 @@ class HyperLesionSegmentationWidget(ScriptedLoadableModuleWidget):
 
 
 #
-# HyperLesionSegmentationLogic
+# LSSegmenterLogic
 #
 
-class HyperLesionSegmentationLogic(ScriptedLoadableModuleLogic):
+class LSSegmenterLogic(ScriptedLoadableModuleLogic):
   """This class should implement all the actual
   computation done by your module.  The interface
   should be such that other python code can import
@@ -591,7 +591,7 @@ class HyperLesionSegmentationLogic(ScriptedLoadableModuleLogic):
     return True
 
 
-class HyperLesionSegmentationTest(ScriptedLoadableModuleTest):
+class LSSegmenterTest(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
   Uses ScriptedLoadableModuleTest base class, available at:
@@ -607,9 +607,9 @@ class HyperLesionSegmentationTest(ScriptedLoadableModuleTest):
     """Run as few or as many tests as needed here.
     """
     self.setUp()
-    self.test_HyperLesionSegmentation1()
+    self.test_LSSegmenter1()
 
-  def test_HyperLesionSegmentation1(self):
+  def test_LSSegmenter1(self):
     """ Ideally you should have several levels of tests.  At the lowest level
     tests should exercise the functionality of the logic with different inputs
     (both valid and invalid).  At higher levels your tests should emulate the
@@ -641,6 +641,6 @@ class HyperLesionSegmentationTest(ScriptedLoadableModuleTest):
     self.delayDisplay('Finished with download and loading')
 
     volumeNode = slicer.util.getNode(pattern="FA")
-    logic = HyperLesionSegmentationLogic()
+    logic = LSSegmenterLogic()
     self.assertIsNotNone( logic.hasImageData(volumeNode) )
     self.delayDisplay('Test passed!')
