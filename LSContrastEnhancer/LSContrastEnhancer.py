@@ -7,36 +7,39 @@ from ctypes.util import find_library
 from os.path import expanduser
 
 import vtk, qt, ctk, slicer
+from numpy.core.numeric import outer
 from slicer.ScriptedLoadableModule import *
 import logging
 
 #
-# LSSegmenter
+# LSContrastEnhancer
 #
 
-class LSSegmenter(ScriptedLoadableModule):
+class LSContrastEnhancer(ScriptedLoadableModule):
   """Uses ScriptedLoadableModule base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "LS Segmenter" # TODO make this more human readable by adding spaces
-    self.parent.categories = ["Segmentation"]
+    self.parent.title = "LS Contrast Enhancer" # TODO make this more human readable by adding spaces
+    self.parent.categories = ["Example"]
     self.parent.dependencies = []
-    self.parent.contributors = ["Antonio Carlos Senra Filho (University of Sao Paulo), Luiz Otavio Murta Junior (University of Sao Paulo)"] # replace with "Firstname Lastname (Organization)"
+    self.parent.contributors = ["John Doe (AnyWare Corp.)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
-    This Module offer a voxel-intensity lesion segmentation method based on logistic contrast enhancement and threshold level. At moment, this method was studied on hyperintense lesion segmentation in Multiple Sclerosis lesion segmentation. More details about the Modules functionalities and how to use it, please check the [wiki page](https://www.slicer.org/wiki/Documentation/Nightly/Extensions/LesionSpotlight)
+    This is an example of scripted loadable module bundled in an extension.
+    It performs a simple thresholding on the input volume and optionally captures a screenshot.
     """
     self.parent.acknowledgementText = """
-    This work was partially funded by CAPES and CNPq.
+    This file was originally developed by Jean-Christophe Fillion-Robin, Kitware Inc.
+    and Steve Pieper, Isomics, Inc. and was partially funded by NIH grant 3P41RR013218-12S1.
 """ # replace with organization, grant and thanks.
 
 #
-# LSSegmenterWidget
+# LSContrastEnhancerWidget
 #
 
-class LSSegmenterWidget(ScriptedLoadableModuleWidget):
+class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
   """Uses ScriptedLoadableModuleWidget base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
@@ -59,38 +62,25 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     #
     # input T1 volume selector
     #
-    self.inputT1Selector = slicer.qMRMLNodeComboBox()
-    self.inputT1Selector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.inputT1Selector.selectNodeUponCreation = False
-    self.inputT1Selector.addEnabled = False
-    self.inputT1Selector.removeEnabled = True
-    self.inputT1Selector.noneEnabled = False
-    self.inputT1Selector.showHidden = False
-    self.inputT1Selector.showChildNodeTypes = False
-    self.inputT1Selector.setMRMLScene(slicer.mrmlScene)
-    self.inputT1Selector.setToolTip("T1 Volume")
-    parametersInputFormLayout.addRow("T1 Volume ", self.inputT1Selector)
+    self.inputSelector = slicer.qMRMLNodeComboBox()
+    self.inputSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    self.inputSelector.selectNodeUponCreation = False
+    self.inputSelector.addEnabled = False
+    self.inputSelector.removeEnabled = True
+    self.inputSelector.noneEnabled = False
+    self.inputSelector.showHidden = False
+    self.inputSelector.showChildNodeTypes = False
+    self.inputSelector.setMRMLScene(slicer.mrmlScene)
+    self.inputSelector.setToolTip("Input Volume")
+    parametersInputFormLayout.addRow("Input Volume ", self.inputSelector)
 
-    #
-    # input FLAIR volume selector
-    #
-    self.inputFLAIRSelector = slicer.qMRMLNodeComboBox()
-    self.inputFLAIRSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.inputFLAIRSelector.selectNodeUponCreation = False
-    self.inputFLAIRSelector.addEnabled = False
-    self.inputFLAIRSelector.removeEnabled = True
-    self.inputFLAIRSelector.noneEnabled = False
-    self.inputFLAIRSelector.showHidden = False
-    self.inputFLAIRSelector.showChildNodeTypes = False
-    self.inputFLAIRSelector.setMRMLScene(slicer.mrmlScene)
-    self.inputFLAIRSelector.setToolTip("T2-FLAIR Volume")
-    parametersInputFormLayout.addRow("T2-FLAIR Volume ", self.inputFLAIRSelector)
+    # TODO Adicionar radio button para selecionar o tupo de dado de entrada...assim coloca apneas uma imagem
 
     #
     # output label selector
     #
     self.outputSelector = slicer.qMRMLNodeComboBox()
-    self.outputSelector.nodeTypes = ["vtkMRMLLabelMapVolumeNode"]
+    self.outputSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
     self.outputSelector.selectNodeUponCreation = True
     self.outputSelector.addEnabled = True
     self.outputSelector.renameEnabled = True
@@ -100,16 +90,8 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     self.outputSelector.showChildNodeTypes = False
     self.outputSelector.setMRMLScene(slicer.mrmlScene)
     self.outputSelector.setToolTip(
-      "Output a global lesion mask.")
-    parametersInputFormLayout.addRow("Lesion Label ", self.outputSelector)
-
-    #
-    # Apply Button
-    #
-    self.applyButton = qt.QPushButton("Apply")
-    self.applyButton.toolTip = "Run the algorithm."
-    self.applyButton.enabled = False
-    parametersInputFormLayout.addRow(self.applyButton)
+      "Output enhanced volume.")
+    parametersInputFormLayout.addRow("Output Volume ", self.outputSelector)
 
     #
     # Noise Attenuation Parameters Area
@@ -125,9 +107,9 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     # Filtering Parameters: Condutance
     #
     self.setFilteringCondutanceWidget = ctk.ctkSliderWidget()
-    self.setFilteringCondutanceWidget.maximum=30
-    self.setFilteringCondutanceWidget.minimum=0
-    self.setFilteringCondutanceWidget.value=15
+    self.setFilteringCondutanceWidget.maximum = 30
+    self.setFilteringCondutanceWidget.minimum = 0
+    self.setFilteringCondutanceWidget.value = 15
     self.setFilteringCondutanceWidget.singleStep = 1
     self.setFilteringCondutanceWidget.setToolTip("Condutance parameter.")
     parametersNoiseAttenuationFormLayout.addRow("Condutance ", self.setFilteringCondutanceWidget)
@@ -136,9 +118,9 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     # Filtering Parameters: Number of iterations
     #
     self.setFilteringNumberOfIterationWidget = ctk.ctkSliderWidget()
-    self.setFilteringNumberOfIterationWidget.maximum =50
-    self.setFilteringNumberOfIterationWidget.minimum =0
-    self.setFilteringNumberOfIterationWidget.value=5
+    self.setFilteringNumberOfIterationWidget.maximum = 50
+    self.setFilteringNumberOfIterationWidget.minimum = 0
+    self.setFilteringNumberOfIterationWidget.value = 5
     self.setFilteringNumberOfIterationWidget.singleStep = 1
     self.setFilteringNumberOfIterationWidget.setToolTip("Number of iterations parameter.")
     parametersNoiseAttenuationFormLayout.addRow("Number Of Iterations ", self.setFilteringNumberOfIterationWidget)
@@ -172,7 +154,7 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     self.setIsBETWidget.setToolTip(
       "Is the input data (T1 and T2-FLAIR) already brain extracted?")
     parametersRegistrationFormLayout.addRow("Is brain extracted?",
-                                      self.setIsBETWidget)
+                                            self.setIsBETWidget)
 
     #
     # Percentage Sampling Area
@@ -209,8 +191,6 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
       "Choose the interpolation method used to register the standard space to input image space. Options: Linear, NearestNeighbor, B-Spline")
     parametersRegistrationFormLayout.addRow("Interpolation ", self.setInterpolationMethodBooleanWidget)
 
-    # TODO Terminar de colocar o coregistro
-
     #
     # Lesion Enhancement Function Parameters Area
     #
@@ -220,6 +200,17 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
 
     # Layout within the dummy collapsible button
     parametersLesionEnhancementFormLayout = qt.QFormLayout(parametersLesionEnhancementCollapsibleButton)
+
+    #
+    # Weighted Lesion Enhancement
+    #
+    self.setWeightedEnhancementWidget = ctk.ctkSliderWidget()
+    self.setWeightedEnhancementWidget.maximum = 100
+    self.setWeightedEnhancementWidget.minimum = 0
+    self.setWeightedEnhancementWidget.value = 15
+    self.setWeightedEnhancementWidget.singleStep = 1
+    self.setWeightedEnhancementWidget.setToolTip("Weighting enhancement value, in percentage, that will be used to increase the lesion signal in the image.")
+    parametersLesionEnhancementFormLayout.addRow("Weighting Enhancement ", self.setWeightedEnhancementWidget)
 
     #
     # Threshold Method Area
@@ -252,7 +243,7 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     self.setFlipObjectWidget.setToolTip(
       "Flip object in the image. This inform if the dark part of the histogram that should be enhanced.")
     parametersLesionEnhancementFormLayout.addRow("Flip Object",
-                                      self.setFlipObjectWidget)
+                                                 self.setFlipObjectWidget)
 
     #
     # Threshold Label Map
@@ -267,19 +258,16 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     parametersLesionEnhancementFormLayout.addRow("Label Map Threshold ", self.setThrehsoldLabelMapWidget)
 
     #
-    # Minimum Lesion Size
+    # Apply Button
     #
-    self.setMinimumLesionWidget = qt.QSpinBox()
-    # self.setMinimumLesionWidget.setMaximum(256)
-    self.setMinimumLesionWidget.setMinimum(1)
-    self.setMinimumLesionWidget.setValue(5)
-    self.setMinimumLesionWidget.setToolTip("Set the minimum lesio size in order to be considered as a true lesion. This value is given in number of pixels.")
-    parametersLesionEnhancementFormLayout.addRow("Minimum Lesion Size ", self.setMinimumLesionWidget)
-
+    self.applyButton = qt.QPushButton("Apply")
+    self.applyButton.toolTip = "Run the algorithm."
+    self.applyButton.enabled = False
+    parametersInputFormLayout.addRow(self.applyButton)
 
     # connections
     self.applyButton.connect('clicked(bool)', self.onApplyButton)
-    self.inputFLAIRSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
+    self.inputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
     self.outputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
 
     # Add vertical spacer
@@ -292,35 +280,31 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     pass
 
   def onSelect(self):
-    self.applyButton.enabled = self.inputFLAIRSelector.currentNode() and self.outputSelector.currentNode()
+    self.applyButton.enabled = self.inputSelector.currentNode() and self.outputSelector.currentNode()
 
   def onApplyButton(self):
-    logic = LSSegmenterLogic()
-    # enableScreenshotsFlag = self.enableScreenshotsFlagCheckBox.checked
-    # imageThreshold = self.imageThresholdSliderWidget.value
-    logic.run(self.inputT1Selector.currentNode()
-              ,self.inputFLAIRSelector.currentNode()
-              ,self.outputSelector.currentNode()
-              ,self.setIsBETWidget.isChecked()
-              ,self.setPercSamplingQWidget.value
-              ,self.setInitiationRegistrationBooleanWidget.currentText
-              ,self.setInterpolationMethodBooleanWidget.currentText
-              ,self.setNumberOfBinsWidget.value
-              ,self.setFlipObjectWidget.isChecked()
-              ,self.setThresholdLFMethodBooleanWidget.currentText
-              ,self.setFilteringCondutanceWidget.value
-              ,self.setFilteringNumberOfIterationWidget.value
-              ,self.setFilteringQWidget.value
-              ,self.setThrehsoldLabelMapWidget.value
-              ,self.setMinimumLesionWidget.value
+    logic = LSContrastEnhancerLogic()
+    logic.run( self.inputSelector.currentNode()
+              , self.outputSelector.currentNode()
+              , self.setIsBETWidget.isChecked()
+              , self.setPercSamplingQWidget.value
+              , self.setInitiationRegistrationBooleanWidget.currentText
+              , self.setInterpolationMethodBooleanWidget.currentText
+              , self.setNumberOfBinsWidget.value
+              , self.setFlipObjectWidget.isChecked()
+              , self.setWeightedEnhancementWidget.value
+              , self.setThresholdLFMethodBooleanWidget.currentText
+              , self.setFilteringCondutanceWidget.value
+              , self.setFilteringNumberOfIterationWidget.value
+              , self.setFilteringQWidget.value
+              , self.setThrehsoldLabelMapWidget.value
               )
 
-
 #
-# LSSegmenterLogic
+# LSContrastEnhancerLogic
 #
 
-class LSSegmenterLogic(ScriptedLoadableModuleLogic):
+class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
   """This class should implement all the actual
   computation done by your module.  The interface
   should be such that other python code can import
@@ -343,77 +327,34 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
       return False
     return True
 
-  def isValidInputOutputData(self, inputFLAIRVolume, outputLabel):
+  def isValidInputOutputData(self, inputVolumeNode, outputVolumeNode):
     """Validates if the output is not the same as input
     """
-    if not inputFLAIRVolume:
+    if not inputVolumeNode:
       logging.debug('isValidInputOutputData failed: no input volume node defined')
       return False
-    if not outputLabel:
+    if not outputVolumeNode:
       logging.debug('isValidInputOutputData failed: no output volume node defined')
       return False
-    if inputFLAIRVolume.GetID()==outputLabel.GetID():
+    if inputVolumeNode.GetID()==outputVolumeNode.GetID():
       logging.debug('isValidInputOutputData failed: input and output volume is the same. Create a new volume for output to avoid this error.')
       return False
     return True
 
+  def run(self, inputVolume, outputVolume, isBET, sampling, initiation, interpolation,
+              numberOfBins, flipObject, weightingValue, thresholdMethod, conductance, nIter,
+              qValue, labelThreshold):
 
-  def run(self, inputT1Volume, inputFLAIRVolume, outputLabel, isBET, sampling, initiation, interpolation, numberOfBins, flipObject,thresholdMethod, conductance, nIter,
-          qValue, labelThreshold, minimumLesionSize):
     """
     Run the actual algorithm
     """
 
-    if not self.isValidInputOutputData(inputFLAIRVolume, outputLabel):
+    if not self.isValidInputOutputData(inputVolume, outputVolume):
       slicer.util.errorDisplay('Input volume is the same as output volume. Choose a different output volume.')
       return False
 
     logging.info('Processing started')
     slicer.util.showStatusMessage("Processing started")
-
-    #################################################################################################################
-    #                                        Registration  - FLAIR to T1                                            #
-    #################################################################################################################
-    # Parameter(0 / 0): fixedVolume(Fixed
-    # Parameter(0 / 1): movingVolume(Moving
-    # Parameter(0 / 2): samplingPercentage(Percentage
-    # Parameter(0 / 3): splineGridSize(B - Spline
-    # # Parameter(1 / 0): linearTransform(Slicer
-    # # Linear
-    # # Transform)
-    # # Parameter(1 / 1): bsplineTransform(Slicer
-    # # BSpline
-    # # Transform)
-    # Parameter(1 / 2): outputVolume(Output
-    # Parameter(2 / 1): initializeTransformMode(Initialize
-    # Transform
-    # Mode)
-    # Parameter(3 / 0): useRigid(Rigid(6
-    # Parameter(3 / 3): useAffine(Affine(12
-    # Parameter(3 / 4): useBSpline(BSpline( > 27
-    # Parameter(5 / 5): interpolationMode(Interpolation
-    # Parameter(7 / 2): numberOfHistogramBins(Histogram
-    # Parameter(7 / 4): costMetric(Cost
-    #
-    # Registering the FLAIR image to T1 image.
-    #
-    slicer.util.showStatusMessage("Step 1/...: T2-FLAIR to T1 registration...")
-    registrationFLAIR2T1Transform = slicer.vtkMRMLLinearTransformNode()
-    slicer.mrmlScene.AddNode(registrationFLAIR2T1Transform)
-    inputFLAIR_T1Volume = slicer.vtkMRMLScalarVolumeNode()
-    slicer.mrmlScene.AddNode(inputFLAIR_T1Volume)
-    regParams = {}
-    regParams["fixedVolume"] = inputT1Volume.GetID()
-    regParams["movingVolume"] = inputFLAIRVolume.GetID()
-    regParams["samplingPercentage"] = sampling
-    regParams["splineGridSize"] = '14,10,12'
-    regParams["outputVolume"] = inputFLAIR_T1Volume.GetID()
-    regParams["linearTransform"] = registrationFLAIR2T1Transform.GetID()
-    regParams["initializeTransformMode"] = initiation
-    regParams["useRigid"] = True
-    regParams["interpolationMode"] = interpolation
-
-    slicer.cli.run(slicer.modules.brainsfit, None, regParams, wait_for_completion=True)
 
     #################################################################################################################
     #                                        Registration  - MNI to T1                                              #
@@ -430,27 +371,6 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
       slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm.nii.gz')
       MNITemplateNodeName = "MNI152_T1_1mm"
 
-
-    # Parameter(0 / 0): fixedVolume(Fixed
-    # Parameter(0 / 1): movingVolume(Moving
-    # Parameter(0 / 2): samplingPercentage(Percentage
-    # Parameter(0 / 3): splineGridSize(B - Spline
-    # # Parameter(1 / 0): linearTransform(Slicer
-    # # Linear
-    # # Transform)
-    # # Parameter(1 / 1): bsplineTransform(Slicer
-    # # BSpline
-    # # Transform)
-    # Parameter(1 / 2): outputVolume(Output
-    # Parameter(2 / 1): initializeTransformMode(Initialize
-    # Transform
-    # Mode)
-    # Parameter(3 / 0): useRigid(Rigid(6
-    # Parameter(3 / 3): useAffine(Affine(12
-    # Parameter(3 / 4): useBSpline(BSpline( > 27
-    # Parameter(5 / 5): interpolationMode(Interpolation
-    # Parameter(7 / 2): numberOfHistogramBins(Histogram
-    # Parameter(7 / 4): costMetric(Cost
     #
     # Registering the FLAIR image to T1 image.
     #
@@ -460,7 +380,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     MNINativeVolume = slicer.vtkMRMLScalarVolumeNode()
     slicer.mrmlScene.AddNode(MNINativeVolume)
     regParams = {}
-    regParams["fixedVolume"] = inputT1Volume.GetID()
+    regParams["fixedVolume"] = inputVolume.GetID()
     regParams["movingVolume"] = slicer.util.getNode(MNITemplateNodeName)
     regParams["samplingPercentage"] = sampling
     regParams["splineGridSize"] = '14,10,12'
@@ -472,7 +392,6 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     regParams["interpolationMode"] = interpolation
 
     slicer.cli.run(slicer.modules.brainsfit, None, regParams, wait_for_completion=True)
-
 
     #################################################################################################################
     #                                              White Matter Mask                                                #
@@ -487,7 +406,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     slicer.mrmlScene.AddNode(MNINativeWMLabel)
     regParams = {}
     regParams["inputVolume"] = slicer.util.getNode(MNITWhiteMatterNodeName)
-    regParams["referenceVolume"] = inputT1Volume.GetID()
+    regParams["referenceVolume"] = inputVolume.GetID()
     regParams["pixelType"] = "binary"
     regParams["outputVolume"] = MNINativeWMLabel.GetID()
     regParams["warpTransform"] = registrationMNI2T1Transform.GetID()
@@ -502,21 +421,13 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     #                                             Bias Field Correction                                             #
     #################################################################################################################
     slicer.util.showStatusMessage("Step 3/...: Bias field correction...")
-    # Parameter(0 / 0): inputImageName(Input
-    # Image)
-    # Parameter(0 / 1): maskImageName(Mask
-    # Image)
-    # Parameter(0 / 2): outputImageName(Output
-    # Volume)
-    # Parameter(0 / 3): outputBiasFieldName(Output
-    # bias
 
-    inputFLAIRBiasVolume = slicer.vtkMRMLScalarVolumeNode()
-    slicer.mrmlScene.AddNode(inputFLAIRBiasVolume)
+    inputBiasVolume = slicer.vtkMRMLScalarVolumeNode()
+    slicer.mrmlScene.AddNode(inputBiasVolume)
     regParams = {}
-    regParams["inputImageName"] = inputFLAIR_T1Volume.GetID()
+    regParams["inputImageName"] = inputVolume.GetID()
     regParams["maskImageName"] = MNINativeWMLabel.GetID()
-    regParams["outputImageName"] = inputFLAIRBiasVolume.GetID()
+    regParams["outputImageName"] = inputBiasVolume.GetID()
 
     slicer.cli.run(slicer.modules.n4itkbiasfieldcorrection, None, regParams, wait_for_completion=True)
 
@@ -524,23 +435,12 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     #                                              Noise Attenuation                                                #
     #################################################################################################################
     slicer.util.showStatusMessage("Step 5/...: Decreasing image noise level...")
-    # Parameter(0 / 0): inputVolume(Input
-    # Volume)
-    # Parameter(0 / 1): outputVolume(Output
-    # Volume)
-    # Parameter(1 / 0): condutance(Condutance)
-    # Parameter(1 / 1): iterations(Number
-    # of
-    # Iterations)
-    # Parameter(1 / 2): timeStep(Time
-    # Step)
-    # Parameter(1 / 3): q(Anomalous
-    # Parameter)
-    inputFLAIRBiasSmoothVolume = slicer.vtkMRMLScalarVolumeNode()
-    slicer.mrmlScene.AddNode(inputFLAIRBiasSmoothVolume)
+
+    inputBiasSmoothVolume = slicer.vtkMRMLScalarVolumeNode()
+    slicer.mrmlScene.AddNode(inputBiasSmoothVolume)
     regParams = {}
-    regParams["inputVolume"] = inputFLAIRBiasVolume.GetID()
-    regParams["outputVolume"] = inputFLAIRBiasSmoothVolume.GetID()
+    regParams["inputVolume"] = inputBiasVolume.GetID()
+    regParams["outputVolume"] = inputBiasSmoothVolume.GetID()
     regParams["condutance"] = conductance
     regParams["iterations"] = nIter
     regParams["q"] = qValue
@@ -550,18 +450,12 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                              Lesion Enhancement                                               #
     #################################################################################################################
-    # Parameter(0 / 0): inputVolume(Input
-    # Parameter(0 / 1): maskVolume(Mask
-    # Parameter(0 / 2): outputVolume(Output
-    # Parameter(1 / 0): numberOfBins(Number
-    # Parameter(1 / 1): flipObject(Flip
-    # Parameter(1 / 2): thrType(Threshold
     slicer.util.showStatusMessage("Step 4/...: Enhancing lesion contrast...")
-    inputFLAIRBiasSmoothLesionEnhancedVolume = slicer.vtkMRMLScalarVolumeNode()
-    slicer.mrmlScene.AddNode(inputFLAIRBiasSmoothLesionEnhancedVolume)
+    inputBiasSmoothLesionEnhancedVolume = slicer.vtkMRMLScalarVolumeNode()
+    slicer.mrmlScene.AddNode(inputBiasSmoothLesionEnhancedVolume)
     regParams = {}
-    regParams["inputVolume"] = inputFLAIRBiasSmoothVolume.GetID()
-    regParams["outputVolume"] = inputFLAIRBiasSmoothLesionEnhancedVolume.GetID()
+    regParams["inputVolume"] = inputBiasSmoothVolume.GetID()
+    regParams["outputVolume"] = inputBiasSmoothLesionEnhancedVolume.GetID()
     regParams["maskVolume"] = MNINativeWMLabel.GetID()
     regParams["numberOfBins"] = numberOfBins
     regParams["flipObject"] = flipObject
@@ -569,18 +463,19 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
 
     slicer.cli.run(slicer.modules.logisticcontrastenhancement, None, regParams, wait_for_completion=True)
 
-
     #################################################################################################################
-    #                                              Lesion Segmentation                                              #
+    #                                              Contrast Adjustment                                              #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 5/...: Lesion map refinement...")
+    slicer.util.showStatusMessage("Step 5/...: Increasing input image contrast...")
     regParams = {}
-    regParams["inputVolume"]= inputFLAIRBiasSmoothLesionEnhancedVolume.GetID()
-    regParams["outputVolume"] = outputLabel.GetID()
-    regParams["threshold"]= labelThreshold
-    regParams["lesionMinSize"] = minimumLesionSize
+    regParams["inputVolume"] = inputVolume.GetID()
+    regParams["contrastMap"] = inputBiasSmoothLesionEnhancedVolume.GetID()
+    regParams["regionMask"] = MNINativeWMLabel.GetID()
+    regParams["outputVolume"] = outputVolume.GetID()
+    regParams["weight"] = weightingValue
+    regParams["lesionThr"] = labelThreshold
 
-    slicer.cli.run(slicer.modules.labelrefinement, None, regParams, wait_for_completion=True)
+    slicer.cli.run(slicer.modules.lscontrastenhancer, None, regParams, wait_for_completion=True)
 
 
     slicer.util.showStatusMessage("Processing completed")
@@ -589,7 +484,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     return True
 
 
-class LSSegmenterTest(ScriptedLoadableModuleTest):
+class LSContrastEnhancerTest(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
   Uses ScriptedLoadableModuleTest base class, available at:
@@ -605,9 +500,9 @@ class LSSegmenterTest(ScriptedLoadableModuleTest):
     """Run as few or as many tests as needed here.
     """
     self.setUp()
-    self.test_LSSegmenter1()
+    self.test_LSContrastEnhancer1()
 
-  def test_LSSegmenter1(self):
+  def test_LSContrastEnhancer1(self):
     """ Ideally you should have several levels of tests.  At the lowest level
     tests should exercise the functionality of the logic with different inputs
     (both valid and invalid).  At higher levels your tests should emulate the
@@ -639,6 +534,6 @@ class LSSegmenterTest(ScriptedLoadableModuleTest):
     self.delayDisplay('Finished with download and loading')
 
     volumeNode = slicer.util.getNode(pattern="FA")
-    logic = LSSegmenterLogic()
+    logic = LSContrastEnhancerLogic()
     self.assertIsNotNone( logic.hasImageData(volumeNode) )
     self.delayDisplay('Test passed!')
