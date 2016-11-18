@@ -20,18 +20,16 @@ class LSSegmenter(ScriptedLoadableModule):
   """
 
   def __init__(self, parent):
-    ScriptedLoadableModule.__init__(self, parent) # TODO EDITAR QUANDO ESTIVER PRONTO - DEFINIR NOME!!!
+    ScriptedLoadableModule.__init__(self, parent)
     self.parent.title = "LS Segmenter" # TODO make this more human readable by adding spaces
-    self.parent.categories = ["Examples"]
+    self.parent.categories = ["Segmentation"]
     self.parent.dependencies = []
-    self.parent.contributors = ["John Doe (AnyWare Corp.)"] # replace with "Firstname Lastname (Organization)"
+    self.parent.contributors = ["Antonio Carlos Senra Filho (University of Sao Paulo), Luiz Otavio Murta Junior (University of Sao Paulo)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
-    This is an example of scripted loadable module bundled in an extension.
-    It performs a simple thresholding on the input volume and optionally captures a screenshot.
+    This Module offer a voxel-intensity lesion segmentation method based on logistic contrast enhancement and threshold level. At moment, this method was studied on hyperintense lesion segmentation in Multiple Sclerosis lesion segmentation. More details about the Modules functionalities and how to use it, please check the [wiki page](https://www.slicer.org/wiki/Documentation/Nightly/Extensions/LesionSpotlight)
     """
     self.parent.acknowledgementText = """
-    This file was originally developed by Jean-Christophe Fillion-Robin, Kitware Inc.
-    and Steve Pieper, Isomics, Inc. and was partially funded by NIH grant 3P41RR013218-12S1.
+    This work was partially funded by CAPES and CNPq.
 """ # replace with organization, grant and thanks.
 
 #
