@@ -1,6 +1,5 @@
 #include "itkImageFileWriter.h"
 
-//#include "itkSmoothingRecursiveGaussianImageFilter.h"
 #include "itkMaskImageFilter.h"
 #include "itkThresholdImageFilter.h"
 #include "itkSubtractImageFilter.h"
@@ -65,20 +64,17 @@ int DoIt( int argc, char * argv[], T )
     typename MaskFilterType::Pointer maskedImage = MaskFilterType::New();
     maskedImage->SetInput(backgroundImage->GetOutput());
     maskedImage->SetMaskImage(regionMaskReader->GetOutput());
+    maskedImage->Update();
 
     //Calculating baseline contrast
-    typedef itk::StatisticsImageFilter<InputImageType>        StatisticsType;
-    typename StatisticsType::Pointer baseline = StatisticsType::New();
-    baseline->SetInput(maskedImage->GetOutput());
-    baseline->Update();
-
-    double baselineValue = 0.0;
+    InputPixelType baselineValue = 0;
     typedef itk::ImageRegionIterator< InputImageType >              IteratorType;
-    IteratorType contrastIt(maskedImage->GetOutput(), maskedImage->GetOutput()->GetLargestPossibleRegion());
+    IteratorType contrastIt(maskedImage->GetOutput(), maskedImage->GetOutput()->GetBufferedRegion());
 
     contrastIt.GoToBegin();
     int N=0;
     while (!contrastIt.IsAtEnd()) {
+        //        std::cout<<contrastIt.Get()<<std::endl;
         if (contrastIt.Get()!=static_cast<InputPixelType>(0)) {
             baselineValue=baselineValue+contrastIt.Get();
             ++contrastIt;
@@ -86,7 +82,7 @@ int DoIt( int argc, char * argv[], T )
         }
         ++contrastIt;
     }
-    baselineValue/=N;
+    baselineValue/=static_cast<InputPixelType>(N);
     std::cout<<"Region mean contrast: "<<baselineValue<<std::endl;
 
     typename SubtractType::Pointer baselineContrast = SubtractType::New();
@@ -104,17 +100,44 @@ int DoIt( int argc, char * argv[], T )
     rescaledContrastMap->SetOutputMinimum(0.0);
 
     //Applying contrast weighting on the input image
-    double contrastPercentage = weight/100;
+    InputPixelType contrastPercentage = static_cast<InputPixelType>(weight)/100+static_cast<InputPixelType>(1);
+    typedef itk::MultiplyImageFilter< InputImageType >      MultiplyType;
+    typename MultiplyType::Pointer rescaledBoost = MultiplyType::New();
+    rescaledBoost->SetInput1(rescaledContrastMap->GetOutput());
+    rescaledBoost->SetConstant2(contrastPercentage);
 
     typedef itk::AddImageFilter<InputImageType>             AddType;
     typename AddType::Pointer boostWeight = AddType::New();
-    boostWeight->SetInput1(rescaledContrastMap->GetOutput());
-    boostWeight->SetConstant2(static_cast<InputPixelType>(1)+contrastPercentage);
+    boostWeight->SetInput1(rescaledBoost->GetOutput());
+    boostWeight->SetConstant2(static_cast<InputPixelType>(1));
+    boostWeight->Update();
 
-    typedef itk::MultiplyImageFilter< InputImageType >      MultiplyType;
     typename MultiplyType::Pointer inputEnhanced = MultiplyType::New();
     inputEnhanced->SetInput1(inputReader->GetOutput());
     inputEnhanced->SetInput2(boostWeight->GetOutput());
+    inputEnhanced->Update();
+
+    //Info: Mean lesion contrast enhancement
+    IteratorType enhancedIt(inputEnhanced->GetOutput(), inputEnhanced->GetOutput()->GetBufferedRegion());
+    IteratorType origIt(inputReader->GetOutput(),inputReader->GetOutput()->GetBufferedRegion());
+
+    enhancedIt.GoToBegin();
+    origIt.GoToBegin();
+    InputPixelType meanBoost=0;
+    int M=0;
+    while (!enhancedIt.IsAtEnd()) {
+        if (enhancedIt.Get()!=static_cast<InputPixelType>(0)) {
+            meanBoost+=(enhancedIt.Get()/origIt.Get())-static_cast<InputPixelType>(1);
+            M++;
+            ++origIt;
+            ++enhancedIt;
+        }
+        ++origIt;
+        ++enhancedIt;
+
+    }
+    meanBoost/=static_cast<InputPixelType>(M);
+    std::cout<<"Mean image contrast enhancement estimated in "<<(meanBoost)*static_cast<InputPixelType>(100)<<"% in comparison with the original image."<<std::endl;
 
     typename WriterType::Pointer writer = WriterType::New();
     writer->SetFileName( outputVolume.c_str() );

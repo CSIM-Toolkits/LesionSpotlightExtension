@@ -475,7 +475,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     regParams["weight"] = weightingValue
     regParams["lesionThr"] = labelThreshold
 
-    slicer.cli.run(slicer.modules.lscontrastenhancer, None, regParams, wait_for_completion=True)
+    slicer.cli.run(slicer.modules.weightedenhancementimagefilter, None, regParams, wait_for_completion=True)
 
 
     slicer.util.showStatusMessage("Processing completed")
