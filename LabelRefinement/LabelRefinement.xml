@@ -19,24 +19,35 @@
       <description><![CDATA[Input volume]]></description>
     </image>
     <image type="label">
-      <name>outputVolume</name>
-      <label>Output Volume</label>
-      <channel>output</channel>
+      <name>GMMask</name>
+      <label>Gray Matter Mask</label>
+      <channel>input</channel>
       <index>1</index>
-      <description><![CDATA[Output Volume]]></description>
+      <description><![CDATA[Gray matter mask. This mask must be in the same input volume physical space.]]></description>
+    </image>
+    <image type="label">
+      <name>outputVolume</name>
+      <label>Output Mask</label>
+      <channel>output</channel>
+      <index>2</index>
+      <description><![CDATA[Output Mask]]></description>
     </image>
   </parameters>
   <parameters>
     <label>Refinement Parameters</label>
     <description><![CDATA[Refinement parameters]]></description>
-    <double>
-      <name>threshold</name>
-      <longflag>--thr</longflag>
-      <flag>t</flag>
-      <label>Threshold</label>
-      <description><![CDATA[A threshold value]]></description>
-      <default>0.95</default>
-    </double>
+    <integer>
+	   <name>numClass</name>
+	   <longflag>--nClass</longflag>
+	   <label>Number of classes</label>
+	   <description><![CDATA[Set the number of tissues classes desired to segment in the input image. Default: 6 (Background, CSF, Gray Matter, White Matter, perilesional area and lesion)]]></description>
+	   <default>6</default>
+	   <constraints>
+	   <minimum>1</minimum>
+	   <maximum>255</maximum>
+	   <step>1</step>
+	   </constraints>
+    </integer> 
     <integer>
       <name>lesionMinSize</name>
       <longflag>--minLesion</longflag>

@@ -455,7 +455,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     # Registering the FLAIR image to T1 image.
     #
     slicer.util.showStatusMessage("Step 1/...: MNI152 to T1 registration...")
-    registrationMNI2T1Transform = slicer.vtkMRMLLinearTransformNode()
+    registrationMNI2T1Transform = slicer.vtkMRMLBSplineTransformNode()
     slicer.mrmlScene.AddNode(registrationMNI2T1Transform)
     MNINativeVolume = slicer.vtkMRMLScalarVolumeNode()
     slicer.mrmlScene.AddNode(MNINativeVolume)
@@ -465,10 +465,12 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     regParams["samplingPercentage"] = sampling
     regParams["splineGridSize"] = '14,10,12'
     # regParams["outputVolume"] = MNINativeVolume.GetID()
-    regParams["linearTransform"] = registrationMNI2T1Transform.GetID()
+    # regParams["linearTransform"] = registrationMNI2T1Transform.GetID()
+    regParams["bsplineTransform"] = registrationMNI2T1Transform.GetID()
     regParams["initializeTransformMode"] = initiation
     regParams["useRigid"] = True
     regParams["useAffine"] = True
+    regParams["useBSpline"] = True
     regParams["interpolationMode"] = interpolation
 
     slicer.cli.run(slicer.modules.brainsfit, None, regParams, wait_for_completion=True)
@@ -490,6 +492,27 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     regParams["referenceVolume"] = inputT1Volume.GetID()
     regParams["pixelType"] = "binary"
     regParams["outputVolume"] = MNINativeWMLabel.GetID()
+    regParams["warpTransform"] = registrationMNI2T1Transform.GetID()
+    regParams["interpolationMode"] = "NearestNeighbor"
+
+    slicer.cli.run(slicer.modules.brainsresample, None, regParams, wait_for_completion=True)
+
+    #################################################################################################################
+    #                                              Gray Matter Mask                                                 #
+    #################################################################################################################
+    #
+    # Gray Matter Mask.
+    #
+    slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_GrayMatter.nii.gz')
+    MNITGrayMatterNodeName = "MNI152_T1_GrayMatter"
+
+    MNINativeGMLabel = slicer.vtkMRMLLabelMapVolumeNode()
+    slicer.mrmlScene.AddNode(MNINativeGMLabel)
+    regParams = {}
+    regParams["inputVolume"] = slicer.util.getNode(MNITGrayMatterNodeName)
+    regParams["referenceVolume"] = inputT1Volume.GetID()
+    regParams["pixelType"] = "binary"
+    regParams["outputVolume"] = MNINativeGMLabel.GetID()
     regParams["warpTransform"] = registrationMNI2T1Transform.GetID()
     regParams["interpolationMode"] = "NearestNeighbor"
 
@@ -571,13 +594,13 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
 
 
     #################################################################################################################
-    #                                              Lesion Segmentation                                              #
+    #                                              Bayesian Segmentation                                            #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 5/...: Lesion map refinement...")
+    slicer.util.showStatusMessage("Step 5/...: Hyperintense Lesion Segmentation...")
     regParams = {}
     regParams["inputVolume"]= inputFLAIRBiasSmoothLesionEnhancedVolume.GetID()
     regParams["outputVolume"] = outputLabel.GetID()
-    regParams["threshold"]= labelThreshold
+    # regParams["threshold"]= labelThreshold TODO Colocar segmentacao bayesiana no CLI...usar mascara GM para refinar a saida de lesoes
     regParams["lesionMinSize"] = minimumLesionSize
 
     slicer.cli.run(slicer.modules.labelrefinement, None, regParams, wait_for_completion=True)

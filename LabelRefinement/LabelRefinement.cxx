@@ -1,8 +1,12 @@
 #include "itkImageFileWriter.h"
 
-#include "itkBinaryThresholdImageFilter.h"
+#include "itkBayesianClassifierInitializationImageFilter.h"
+#include "itkBayesianClassifierImageFilter.h"
+#include "itkThresholdImageFilter.h"
+#include "itkMaskNegatedImageFilter.h"
 #include "itkConnectedComponentImageFilter.h"
 #include "itkRelabelComponentImageFilter.h"
+#include "itkBinaryThresholdImageFilter.h"
 
 #include "itkPluginUtilities.h"
 
@@ -21,6 +25,7 @@ namespace
 template <class T>
 int DoIt( int argc, char * argv[], T )
 {
+
     PARSE_ARGS;
 
     typedef    T                       InputPixelType;
@@ -29,27 +34,55 @@ int DoIt( int argc, char * argv[], T )
     typedef itk::Image<InputPixelType,  3> InputImageType;
     typedef itk::Image<OutputPixelType, 3> OutputImageType;
 
-    typedef itk::ImageFileReader<InputImageType>  ReaderType;
-    typedef itk::ImageFileWriter<OutputImageType> WriterType;
-
-    typedef itk::BinaryThresholdImageFilter<InputImageType, OutputImageType>     ThresholderType;
-    typename ThresholderType::Pointer thresholder = ThresholderType::New();
+    typedef itk::ImageFileReader<InputImageType>    ReaderType;
+    typedef itk::ImageFileReader<OutputImageType>   MaskReaderType;
+    typedef itk::ImageFileWriter<OutputImageType>   WriterType;
 
     typename ReaderType::Pointer reader = ReaderType::New();
+    typename MaskReaderType::Pointer maskReader = MaskReaderType::New();
 
     reader->SetFileName( inputVolume.c_str() );
+    maskReader->SetFileName( GMMask.c_str() );
+    reader->Update();
+    maskReader->Update();
 
-    thresholder->SetInput(reader->GetOutput());
+    //Bayesian Segmentation Approach
+    typedef itk::BayesianClassifierInitializationImageFilter< InputImageType >         BayesianInitializerType;
+    typename BayesianInitializerType::Pointer bayesianInitializer = BayesianInitializerType::New();
+
+    bayesianInitializer->SetInput( reader->GetOutput() );
+    bayesianInitializer->SetNumberOfClasses( numClass );// Background, WM, GM, CSF, perilesional area and lesions
+    bayesianInitializer->Update();
+
+    //    typedef unsigned char  LabelType;
+    typedef float          PriorType;
+    typedef float          PosteriorType;
+
+    typedef itk::VectorImage< float, 3 > VectorInputImageType;
+    typedef itk::BayesianClassifierImageFilter< VectorInputImageType,OutputPixelType, PosteriorType,PriorType >   ClassifierFilterType;
+    typename ClassifierFilterType::Pointer bayesClassifier = ClassifierFilterType::New();
+
+    bayesClassifier->SetInput( bayesianInitializer->GetOutput() );
+
+    unsigned char tissueValue=numClass - 1;
+    typedef itk::ThresholdImageFilter<OutputImageType> ThresholdType;
+    typename ThresholdType::Pointer thresholder = ThresholdType::New();
+    thresholder->SetInput(bayesClassifier->GetOutput());
+    thresholder->ThresholdOutside(tissueValue, tissueValue);
     thresholder->SetOutsideValue(0);
-    thresholder->SetInsideValue(1);
-    thresholder->SetLowerThreshold(threshold);
-    thresholder->SetUpperThreshold(1.0);
+
+    //Reduce false positive lesions in Gray Matter tissue
+    typedef itk::MaskNegatedImageFilter< OutputImageType, OutputImageType > MaskNegatedImageFilterType;
+    MaskNegatedImageFilterType::Pointer refinedLesions = MaskNegatedImageFilterType::New();
+    refinedLesions->SetInput(thresholder->GetOutput());
+    refinedLesions->SetMaskImage(maskReader->GetOutput());
+    refinedLesions->Update();
 
     //Label treatment - Removing and organizing the lesion database
     //Spliting labels
     typedef itk::ConnectedComponentImageFilter<OutputImageType, OutputImageType> ConnectedLabelType;
     typename ConnectedLabelType::Pointer connLabel = ConnectedLabelType::New();
-    connLabel->SetInput(thresholder->GetOutput());
+    connLabel->SetInput(refinedLesions->GetOutput());
     connLabel->Update();
 
     cout<<"Number of connected lesions: "<<connLabel->GetObjectCount()<<endl;
@@ -67,12 +100,12 @@ int DoIt( int argc, char * argv[], T )
     cout<<"Size of the lesions: "<<endl;
     double lesionLoad=0.0;
     for (unsigned int size = 0; size < nLesion; ++size) {
-            cout<<"Lesion("<<size<<")="<<relabel->GetSizeOfObjectInPixels(size)*reader->GetOutput()->GetSpacing()[0]+
-               relabel->GetSizeOfObjectInPixels(size)*reader->GetOutput()->GetSpacing()[1]+
-                    relabel->GetSizeOfObjectInPixels(size)*reader->GetOutput()->GetSpacing()[2]<<" mm3"<<endl;
-            lesionLoad+=relabel->GetSizeOfObjectInPixels(size)*reader->GetOutput()->GetSpacing()[0]+
-                    relabel->GetSizeOfObjectInPixels(size)*reader->GetOutput()->GetSpacing()[1]+
-                         relabel->GetSizeOfObjectInPixels(size)*reader->GetOutput()->GetSpacing()[2];
+        cout<<"Lesion("<<size<<")="<<relabel->GetSizeOfObjectInPixels(size)*reader->GetOutput()->GetSpacing()[0]+
+              relabel->GetSizeOfObjectInPixels(size)*reader->GetOutput()->GetSpacing()[1]+
+                relabel->GetSizeOfObjectInPixels(size)*reader->GetOutput()->GetSpacing()[2]<<" mm3"<<endl;
+        lesionLoad+=relabel->GetSizeOfObjectInPixels(size)*reader->GetOutput()->GetSpacing()[0]+
+                relabel->GetSizeOfObjectInPixels(size)*reader->GetOutput()->GetSpacing()[1]+
+                relabel->GetSizeOfObjectInPixels(size)*reader->GetOutput()->GetSpacing()[2];
     }
     cout<<"Lesion load: "<<lesionLoad<<" mm3 ("<<lesionLoad/1000<<" mL)"<<endl;
 
