@@ -22,7 +22,7 @@ class LSContrastEnhancer(ScriptedLoadableModule):
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "LS Contrast Enhancer" # TODO make this more human readable by adding spaces
+    self.parent.title = "LS Contrast Enhancer"
     self.parent.categories = ["Example"]
     self.parent.dependencies = []
     self.parent.contributors = ["John Doe (AnyWare Corp.)"] # replace with "Firstname Lastname (Organization)"
@@ -60,7 +60,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     parametersInputFormLayout = qt.QFormLayout(parametersInputCollapsibleButton)
 
     #
-    # input T1 volume selector
+    # input volume selector
     #
     self.inputSelector = slicer.qMRMLNodeComboBox()
     self.inputSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
@@ -74,10 +74,8 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     self.inputSelector.setToolTip("Input Volume")
     parametersInputFormLayout.addRow("Input Volume ", self.inputSelector)
 
-    # TODO Adicionar radio button para selecionar o tupo de dado de entrada...assim coloca apneas uma imagem
-
     #
-    # output label selector
+    # output enhanced volume selector
     #
     self.outputSelector = slicer.qMRMLNodeComboBox()
     self.outputSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
@@ -107,8 +105,8 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     # Filtering Parameters: Condutance
     #
     self.setFilteringCondutanceWidget = ctk.ctkSliderWidget()
-    self.setFilteringCondutanceWidget.maximum = 30
-    self.setFilteringCondutanceWidget.minimum = 0
+    self.setFilteringCondutanceWidget.maximum = 50
+    self.setFilteringCondutanceWidget.minimum = 1
     self.setFilteringCondutanceWidget.value = 15
     self.setFilteringCondutanceWidget.singleStep = 1
     self.setFilteringCondutanceWidget.setToolTip("Condutance parameter.")
@@ -119,7 +117,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     #
     self.setFilteringNumberOfIterationWidget = ctk.ctkSliderWidget()
     self.setFilteringNumberOfIterationWidget.maximum = 50
-    self.setFilteringNumberOfIterationWidget.minimum = 0
+    self.setFilteringNumberOfIterationWidget.minimum = 1
     self.setFilteringNumberOfIterationWidget.value = 5
     self.setFilteringNumberOfIterationWidget.singleStep = 1
     self.setFilteringNumberOfIterationWidget.setToolTip("Number of iterations parameter.")
@@ -372,10 +370,10 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
       MNITemplateNodeName = "MNI152_T1_1mm"
 
     #
-    # Registering the FLAIR image to T1 image.
+    # Registering the MNI image to T1 image.
     #
-    slicer.util.showStatusMessage("Step 1/...: MNI152 to T1 registration...")
-    registrationMNI2T1Transform = slicer.vtkMRMLLinearTransformNode()
+    slicer.util.showStatusMessage("Step 1/6: MNI152 to T1 registration...")
+    registrationMNI2T1Transform = slicer.vtkMRMLBSplineTransformNode()
     slicer.mrmlScene.AddNode(registrationMNI2T1Transform)
     MNINativeVolume = slicer.vtkMRMLScalarVolumeNode()
     slicer.mrmlScene.AddNode(MNINativeVolume)
@@ -383,12 +381,14 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     regParams["fixedVolume"] = inputVolume.GetID()
     regParams["movingVolume"] = slicer.util.getNode(MNITemplateNodeName)
     regParams["samplingPercentage"] = sampling
-    regParams["splineGridSize"] = '14,10,12'
+    regParams["splineGridSize"] = '3,3,3'
     # regParams["outputVolume"] = MNINativeVolume.GetID()
-    regParams["linearTransform"] = registrationMNI2T1Transform.GetID()
+    # regParams["linearTransform"] = registrationMNI2T1Transform.GetID()
+    regParams["bsplineTransform"] = registrationMNI2T1Transform.GetID()
     regParams["initializeTransformMode"] = initiation
     regParams["useRigid"] = True
     regParams["useAffine"] = True
+    regParams["useBSpline"] = True
     regParams["interpolationMode"] = interpolation
 
     slicer.cli.run(slicer.modules.brainsfit, None, regParams, wait_for_completion=True)
@@ -399,6 +399,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     #
     # White Matter Mask.
     #
+    slicer.util.showStatusMessage("Step 2/6: Brain white matter estimation...")
     slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_WhiteMatter.nii.gz')
     MNITWhiteMatterNodeName = "MNI152_T1_WhiteMatter"
 
@@ -420,7 +421,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                             Bias Field Correction                                             #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 3/...: Bias field correction...")
+    slicer.util.showStatusMessage("Step 3/6: Bias field correction...")
 
     inputBiasVolume = slicer.vtkMRMLScalarVolumeNode()
     slicer.mrmlScene.AddNode(inputBiasVolume)
@@ -434,7 +435,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                              Noise Attenuation                                                #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 5/...: Decreasing image noise level...")
+    slicer.util.showStatusMessage("Step 4/6: Decreasing image noise level...")
 
     inputBiasSmoothVolume = slicer.vtkMRMLScalarVolumeNode()
     slicer.mrmlScene.AddNode(inputBiasSmoothVolume)
@@ -450,7 +451,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                              Lesion Enhancement                                               #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 4/...: Enhancing lesion contrast...")
+    slicer.util.showStatusMessage("Step 5/6: Enhancing lesion contrast...")
     inputBiasSmoothLesionEnhancedVolume = slicer.vtkMRMLScalarVolumeNode()
     slicer.mrmlScene.AddNode(inputBiasSmoothLesionEnhancedVolume)
     regParams = {}
@@ -466,9 +467,9 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                              Contrast Adjustment                                              #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 5/...: Increasing input image contrast...")
+    slicer.util.showStatusMessage("Step 6/6: Increasing input image contrast...")
     regParams = {}
-    regParams["inputVolume"] = inputVolume.GetID()
+    regParams["inputVolume"] = inputBiasSmoothVolume.GetID()
     regParams["contrastMap"] = inputBiasSmoothLesionEnhancedVolume.GetID()
     regParams["regionMask"] = MNINativeWMLabel.GetID()
     regParams["outputVolume"] = outputVolume.GetID()
@@ -476,6 +477,15 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     regParams["lesionThr"] = labelThreshold
 
     slicer.cli.run(slicer.modules.weightedenhancementimagefilter, None, regParams, wait_for_completion=True)
+
+
+    # Removing unnecessary nodes
+    slicer.mrmlScene.RemoveNode(slicer.util.getNode(MNITWhiteMatterNodeName))
+    slicer.mrmlScene.RemoveNode(MNINativeWMLabel)
+    slicer.mrmlScene.RemoveNode(slicer.util.getNode(MNITemplateNodeName))
+    slicer.mrmlScene.RemoveNode(inputBiasVolume)
+    slicer.mrmlScene.RemoveNode(inputBiasSmoothVolume)
+    slicer.mrmlScene.RemoveNode(inputBiasSmoothLesionEnhancedVolume)
 
 
     slicer.util.showStatusMessage("Processing completed")
