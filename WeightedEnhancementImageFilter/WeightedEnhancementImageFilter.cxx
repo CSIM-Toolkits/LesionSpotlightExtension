@@ -92,6 +92,7 @@ int DoIt( int argc, char * argv[], T )
     typename ThresholderType::Pointer finalContrasMap = ThresholderType::New();
     finalContrasMap->SetInput(baselineContrast->GetOutput());
     finalContrasMap->ThresholdBelow(0.0);
+    finalContrasMap->Update();
 
     typedef itk::RescaleIntensityImageFilter<InputImageType,InputImageType> RescalerType;
     typename RescalerType::Pointer rescaledContrastMap = RescalerType::New();
@@ -120,21 +121,26 @@ int DoIt( int argc, char * argv[], T )
     //Info: Mean lesion contrast enhancement
     IteratorType enhancedIt(inputEnhanced->GetOutput(), inputEnhanced->GetOutput()->GetBufferedRegion());
     IteratorType origIt(inputReader->GetOutput(),inputReader->GetOutput()->GetBufferedRegion());
+    IteratorType maskIt(finalContrasMap->GetOutput(), finalContrasMap->GetOutput()->GetBufferedRegion());
 
     enhancedIt.GoToBegin();
     origIt.GoToBegin();
+    maskIt.GoToBegin();
     InputPixelType meanBoost=0;
     int M=0;
     while (!enhancedIt.IsAtEnd()) {
-        if (enhancedIt.Get()!=static_cast<InputPixelType>(0)) {
-            meanBoost+=(enhancedIt.Get()/origIt.Get())-static_cast<InputPixelType>(1);
-            M++;
-            ++origIt;
-            ++enhancedIt;
+        if (maskIt.Get()!=0) {
+            if (enhancedIt.Get()!=static_cast<InputPixelType>(0)) {
+                meanBoost+=(enhancedIt.Get()/origIt.Get())-static_cast<InputPixelType>(1);
+                M++;
+                ++origIt;
+                ++enhancedIt;
+                ++maskIt;
+            }
         }
         ++origIt;
         ++enhancedIt;
-
+        ++maskIt;
     }
     meanBoost/=static_cast<InputPixelType>(M);
     std::cout<<"Mean image contrast enhancement estimated in "<<(meanBoost)*static_cast<InputPixelType>(100)<<"% in comparison with the original image."<<std::endl;
