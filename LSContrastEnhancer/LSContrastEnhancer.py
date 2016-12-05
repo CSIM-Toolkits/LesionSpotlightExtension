@@ -375,15 +375,11 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     slicer.util.showStatusMessage("Step 1/6: MNI152 to T1 registration...")
     registrationMNI2T1Transform = slicer.vtkMRMLBSplineTransformNode()
     slicer.mrmlScene.AddNode(registrationMNI2T1Transform)
-    MNINativeVolume = slicer.vtkMRMLScalarVolumeNode()
-    slicer.mrmlScene.AddNode(MNINativeVolume)
     regParams = {}
     regParams["fixedVolume"] = inputVolume.GetID()
     regParams["movingVolume"] = slicer.util.getNode(MNITemplateNodeName)
     regParams["samplingPercentage"] = sampling
-    regParams["splineGridSize"] = '3,3,3'
-    # regParams["outputVolume"] = MNINativeVolume.GetID()
-    # regParams["linearTransform"] = registrationMNI2T1Transform.GetID()
+    regParams["splineGridSize"] = '8,8,8'
     regParams["bsplineTransform"] = registrationMNI2T1Transform.GetID()
     regParams["initializeTransformMode"] = initiation
     regParams["useRigid"] = True
@@ -396,9 +392,6 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                              White Matter Mask                                                #
     #################################################################################################################
-    #
-    # White Matter Mask.
-    #
     slicer.util.showStatusMessage("Step 2/6: Brain white matter estimation...")
     slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_WhiteMatter.nii.gz')
     MNITWhiteMatterNodeName = "MNI152_T1_WhiteMatter"
@@ -423,12 +416,10 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     slicer.util.showStatusMessage("Step 3/6: Bias field correction...")
 
-    inputBiasVolume = slicer.vtkMRMLScalarVolumeNode()
-    slicer.mrmlScene.AddNode(inputBiasVolume)
     regParams = {}
     regParams["inputImageName"] = inputVolume.GetID()
     regParams["maskImageName"] = MNINativeWMLabel.GetID()
-    regParams["outputImageName"] = inputBiasVolume.GetID()
+    regParams["outputImageName"] = inputVolume.GetID()
 
     slicer.cli.run(slicer.modules.n4itkbiasfieldcorrection, None, regParams, wait_for_completion=True)
 
@@ -437,11 +428,9 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     slicer.util.showStatusMessage("Step 4/6: Decreasing image noise level...")
 
-    inputBiasSmoothVolume = slicer.vtkMRMLScalarVolumeNode()
-    slicer.mrmlScene.AddNode(inputBiasSmoothVolume)
     regParams = {}
-    regParams["inputVolume"] = inputBiasVolume.GetID()
-    regParams["outputVolume"] = inputBiasSmoothVolume.GetID()
+    regParams["inputVolume"] = inputVolume.GetID()
+    regParams["outputVolume"] = inputVolume.GetID()
     regParams["condutance"] = conductance
     regParams["iterations"] = nIter
     regParams["q"] = qValue
@@ -455,7 +444,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     inputBiasSmoothLesionEnhancedVolume = slicer.vtkMRMLScalarVolumeNode()
     slicer.mrmlScene.AddNode(inputBiasSmoothLesionEnhancedVolume)
     regParams = {}
-    regParams["inputVolume"] = inputBiasSmoothVolume.GetID()
+    regParams["inputVolume"] = inputVolume.GetID()
     regParams["outputVolume"] = inputBiasSmoothLesionEnhancedVolume.GetID()
     regParams["maskVolume"] = MNINativeWMLabel.GetID()
     regParams["numberOfBins"] = numberOfBins
@@ -469,7 +458,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     slicer.util.showStatusMessage("Step 6/6: Increasing input image contrast...")
     regParams = {}
-    regParams["inputVolume"] = inputBiasSmoothVolume.GetID()
+    regParams["inputVolume"] = inputVolume.GetID()
     regParams["contrastMap"] = inputBiasSmoothLesionEnhancedVolume.GetID()
     regParams["regionMask"] = MNINativeWMLabel.GetID()
     regParams["outputVolume"] = outputVolume.GetID()
@@ -481,10 +470,8 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
 
     # Removing unnecessary nodes
     slicer.mrmlScene.RemoveNode(slicer.util.getNode(MNITWhiteMatterNodeName))
-    slicer.mrmlScene.RemoveNode(MNINativeWMLabel)
     slicer.mrmlScene.RemoveNode(slicer.util.getNode(MNITemplateNodeName))
-    slicer.mrmlScene.RemoveNode(inputBiasVolume)
-    slicer.mrmlScene.RemoveNode(inputBiasSmoothVolume)
+    slicer.mrmlScene.RemoveNode(MNINativeWMLabel)
     slicer.mrmlScene.RemoveNode(inputBiasSmoothLesionEnhancedVolume)
 
 
