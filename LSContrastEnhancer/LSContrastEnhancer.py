@@ -1,3 +1,15 @@
+# Copyright 2016 Antonio Carlos da Silva Senra Filho
+#
+# Licensed under the Apache License, Version 2.0(the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http: // www.apache.org / licenses / LICENSE - 2.0
+#
+# Unless required by applicable law or agreed to in writing, software distributed
+# under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+# CONDITIONS OF ANY KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations under the License.
 import os
 import sys
 import platform
@@ -45,7 +57,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
   """
 
   def setup(self):
-    ScriptedLoadableModuleWidget.setup(self)
+    # ScriptedLoadableModuleWidget.setup(self)
 
     # Instantiate and connect widgets ...
 
@@ -107,7 +119,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     self.setFilteringCondutanceWidget = ctk.ctkSliderWidget()
     self.setFilteringCondutanceWidget.maximum = 50
     self.setFilteringCondutanceWidget.minimum = 1
-    self.setFilteringCondutanceWidget.value = 15
+    self.setFilteringCondutanceWidget.value = 10
     self.setFilteringCondutanceWidget.singleStep = 1
     self.setFilteringCondutanceWidget.setToolTip("Condutance parameter.")
     parametersNoiseAttenuationFormLayout.addRow("Condutance ", self.setFilteringCondutanceWidget)
@@ -205,7 +217,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     self.setWeightedEnhancementWidget = ctk.ctkSliderWidget()
     self.setWeightedEnhancementWidget.maximum = 100
     self.setWeightedEnhancementWidget.minimum = 0
-    self.setWeightedEnhancementWidget.value = 15
+    self.setWeightedEnhancementWidget.value = 5
     self.setWeightedEnhancementWidget.singleStep = 1
     self.setWeightedEnhancementWidget.setToolTip("Weighting enhancement value, in percentage, that will be used to increase the lesion signal in the image.")
     parametersLesionEnhancementFormLayout.addRow("Weighting Enhancement ", self.setWeightedEnhancementWidget)
@@ -251,7 +263,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     self.setThrehsoldLabelMapWidget.setMaximum(1)
     self.setThrehsoldLabelMapWidget.setMinimum(0)
     self.setThrehsoldLabelMapWidget.setSingleStep(0.01)
-    self.setThrehsoldLabelMapWidget.setValue(0.9)
+    self.setThrehsoldLabelMapWidget.setValue(0.80)
     self.setThrehsoldLabelMapWidget.setToolTip("Threshold for the lesion label Map.")
     parametersLesionEnhancementFormLayout.addRow("Label Map Threshold ", self.setThrehsoldLabelMapWidget)
 
@@ -363,11 +375,9 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
       home = expanduser("~")
 
     if isBET:
-      slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm_brain.nii.gz')
-      MNITemplateNodeName = "MNI152_T1_1mm_brain"
+      (read, MNITemplateNode)=slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm_brain.nii.gz',{},True)
     else:
-      slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm.nii.gz')
-      MNITemplateNodeName = "MNI152_T1_1mm"
+      (read, MNITemplateNode)=slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm.nii.gz',{},True)
 
     #
     # Registering the MNI image to T1 image.
@@ -377,7 +387,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     slicer.mrmlScene.AddNode(registrationMNI2T1Transform)
     regParams = {}
     regParams["fixedVolume"] = inputVolume.GetID()
-    regParams["movingVolume"] = slicer.util.getNode(MNITemplateNodeName)
+    regParams["movingVolume"] = MNITemplateNode.GetID()
     regParams["samplingPercentage"] = sampling
     regParams["splineGridSize"] = '8,8,8'
     regParams["bsplineTransform"] = registrationMNI2T1Transform.GetID()
@@ -393,13 +403,12 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     #                                              White Matter Mask                                                #
     #################################################################################################################
     slicer.util.showStatusMessage("Step 2/6: Brain white matter estimation...")
-    slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_WhiteMatter.nii.gz')
-    MNITWhiteMatterNodeName = "MNI152_T1_WhiteMatter"
+    (read, MNITWhiteMatterNode)=slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_WhiteMatter.nii.gz',{},True)
 
     MNINativeWMLabel = slicer.vtkMRMLLabelMapVolumeNode()
     slicer.mrmlScene.AddNode(MNINativeWMLabel)
     regParams = {}
-    regParams["inputVolume"] = slicer.util.getNode(MNITWhiteMatterNodeName)
+    regParams["inputVolume"] = MNITWhiteMatterNode.GetID()
     regParams["referenceVolume"] = inputVolume.GetID()
     regParams["pixelType"] = "binary"
     regParams["outputVolume"] = MNINativeWMLabel.GetID()
@@ -408,9 +417,6 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
 
     slicer.cli.run(slicer.modules.brainsresample, None, regParams, wait_for_completion=True)
 
-    #################################################################################################################
-    #                                         T2-FLAIR Image Processing                                             #
-    #################################################################################################################
     #################################################################################################################
     #                                             Bias Field Correction                                             #
     #################################################################################################################
@@ -469,8 +475,8 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
 
 
     # Removing unnecessary nodes
-    slicer.mrmlScene.RemoveNode(slicer.util.getNode(MNITWhiteMatterNodeName))
-    slicer.mrmlScene.RemoveNode(slicer.util.getNode(MNITemplateNodeName))
+    slicer.mrmlScene.RemoveNode(MNITWhiteMatterNode)
+    slicer.mrmlScene.RemoveNode(MNITemplateNode)
     slicer.mrmlScene.RemoveNode(MNINativeWMLabel)
     slicer.mrmlScene.RemoveNode(inputBiasSmoothLesionEnhancedVolume)
 

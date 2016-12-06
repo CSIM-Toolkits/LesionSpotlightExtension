@@ -1,3 +1,15 @@
+# Copyright 2016 Antonio Carlos da Silva Senra Filho
+#
+# Licensed under the Apache License, Version 2.0(the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http: // www.apache.org / licenses / LICENSE - 2.0
+#
+# Unless required by applicable law or agreed to in writing, software distributed
+# under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+# CONDITIONS OF ANY KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations under the License.
 import os
 import sys
 import platform
@@ -222,8 +234,6 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
       "Choose the interpolation method used to register the standard space to input image space. Options: Linear, NearestNeighbor, B-Spline")
     parametersRegistrationFormLayout.addRow("Interpolation ", self.setInterpolationMethodBooleanWidget)
 
-    # TODO Terminar de colocar o coregistro
-
     #
     # Lesion Enhancement Function Parameters Area
     #
@@ -427,6 +437,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
       home = expanduser("~")
 
     # TODO Como nao usa BET nas imagens de entrada, a mascara de GM precisa ser editada para ter a regiao de non-brain diferente de zero....maskNegateImageFilter
+    # TODO Rever aplicacao da mascara de GM, o resultado nao sai muito bom para regioes mistas...Ver se eh necessario manter essa segmentacao com GM
     if isBET:
       slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm_brain.nii.gz')
       MNITemplateNodeName = "MNI152_T1_1mm_brain"
