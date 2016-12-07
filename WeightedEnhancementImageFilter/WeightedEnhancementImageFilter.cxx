@@ -53,6 +53,7 @@ int DoIt( int argc, char * argv[], T )
     typedef itk::ImageFileReader<InputImageType>      ReaderType;
     typedef itk::ImageFileReader<LabelImageType>      LabelReaderType;
     typedef itk::ImageFileWriter<OutputImageType>     WriterType;
+//    typedef itk::ImageFileWriter<InputImageType>      WeightedWriterType;
 
     typename ReaderType::Pointer inputReader = ReaderType::New();
     typename ReaderType::Pointer contrastMapReader = ReaderType::New();
@@ -64,14 +65,20 @@ int DoIt( int argc, char * argv[], T )
 
     //Split background and lesion regions
     //Lesion image:
+    typedef itk::RescaleIntensityImageFilter<InputImageType,InputImageType> RescalerType;
+    typename RescalerType::Pointer rescaledContrastMap = RescalerType::New();
+    rescaledContrastMap->SetInput(contrastMapReader->GetOutput());
+    rescaledContrastMap->SetOutputMaximum(1.0);
+    rescaledContrastMap->SetOutputMinimum(0.0);
+
     typedef itk::ThresholdImageFilter<InputImageType>  ThresholderType;
     typename ThresholderType::Pointer lesionImage = ThresholderType::New();
-    lesionImage->SetInput(contrastMapReader->GetOutput());
+    lesionImage->SetInput(rescaledContrastMap->GetOutput());
     lesionImage->ThresholdBelow(static_cast<InputPixelType>(lesionThr));
     //Background image:
     typedef itk::SubtractImageFilter<InputImageType>  SubtractType;
     typename SubtractType::Pointer backgroundImage = SubtractType::New();
-    backgroundImage->SetInput1(contrastMapReader->GetOutput());
+    backgroundImage->SetInput1(rescaledContrastMap->GetOutput());
     backgroundImage->SetInput2(lesionImage->GetOutput());
 
     //Apply region mask over the contrast map
@@ -101,7 +108,7 @@ int DoIt( int argc, char * argv[], T )
     std::cout<<"Region mean contrast: "<<baselineValue<<std::endl;
 
     typename SubtractType::Pointer baselineContrast = SubtractType::New();
-    baselineContrast->SetInput1(contrastMapReader->GetOutput());
+    baselineContrast->SetInput1(rescaledContrastMap->GetOutput());
     baselineContrast->SetConstant2(baselineValue);
 
     typename ThresholderType::Pointer finalContrasMap = ThresholderType::New();
@@ -109,8 +116,6 @@ int DoIt( int argc, char * argv[], T )
     finalContrasMap->ThresholdBelow(0.0);
     finalContrasMap->Update();
 
-    typedef itk::RescaleIntensityImageFilter<InputImageType,InputImageType> RescalerType;
-    typename RescalerType::Pointer rescaledContrastMap = RescalerType::New();
     rescaledContrastMap->SetInput(finalContrasMap->GetOutput());
     rescaledContrastMap->SetOutputMaximum(1.0);
     rescaledContrastMap->SetOutputMinimum(0.0);
@@ -159,6 +164,14 @@ int DoIt( int argc, char * argv[], T )
     }
     meanBoost/=static_cast<InputPixelType>(M);
     std::cout<<"Mean image contrast enhancement estimated in "<<(meanBoost)*static_cast<InputPixelType>(100)<<"% in comparison with the original image."<<std::endl;
+
+//    if (weigthedVolume!="") {
+//        typename WeightedWriterType::Pointer weightedWriter = WeightedWriterType::New();
+//        weightedWriter->SetFileName( weigthedVolume.c_str() );
+//        weightedWriter->SetInput( boostWeight->GetOutput() );
+//        weightedWriter->SetUseCompression(1);
+//        weightedWriter->Update();
+//    }
 
     typename WriterType::Pointer writer = WriterType::New();
     writer->SetFileName( outputVolume.c_str() );
