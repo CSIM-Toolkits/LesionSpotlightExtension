@@ -19,6 +19,7 @@ from ctypes.util import find_library
 from os.path import expanduser
 
 import vtk, qt, ctk, slicer
+from SimpleITK._SimpleITK import sitkComposite
 from slicer.ScriptedLoadableModule import *
 import logging
 
@@ -33,7 +34,7 @@ class LSSegmenter(ScriptedLoadableModule):
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "LS Segmenter" # TODO make this more human readable by adding spaces
+    self.parent.title = "LS Segmenter"
     self.parent.categories = ["Segmentation"]
     self.parent.dependencies = []
     self.parent.contributors = ["Antonio Carlos Senra Filho (University of Sao Paulo), Luiz Otavio Murta Junior (University of Sao Paulo)"] # replace with "Firstname Lastname (Organization)"
@@ -405,7 +406,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
 
     logging.info('Processing started')
     slicer.util.showStatusMessage("Processing started")
-
+    # TODO Trocar o objetivo deste modulo: Fazer somente a segmentacao baseado em algum metodo: Souplet ou CMPB, 2014 (Cabezas)...deixar contrast enhancer para somente o outro modulo
     #################################################################################################################
     #                                        Registration  - FLAIR to T1                                            #
     #################################################################################################################
@@ -436,14 +437,18 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     else:
       home = expanduser("~")
 
-    # TODO Como nao usa BET nas imagens de entrada, a mascara de GM precisa ser editada para ter a regiao de non-brain diferente de zero....maskNegateImageFilter
-    # TODO Rever aplicacao da mascara de GM, o resultado nao sai muito bom para regioes mistas...Ver se eh necessario manter essa segmentacao com GM
-    if isBET:
-      slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm_brain.nii.gz')
-      MNITemplateNodeName = "MNI152_T1_1mm_brain"
+    if platform.system() is "Windows":
+      if isBET:
+        (read, MNITemplateNode) = slicer.util.loadVolume(home + '\\LSSegmenter-Data\\MNI152_T1_1mm_brain.nii.gz', {}, True)
+      else:
+        (read, MNITemplateNode) = slicer.util.loadVolume(home + '\\LSSegmenter-Data\\MNI152_T1_1mm.nii.gz', {}, True)
     else:
-      slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm.nii.gz')
-      MNITemplateNodeName = "MNI152_T1_1mm"
+      if isBET:
+        (read, MNITemplateNode) = slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm_brain.nii.gz', {}, True)
+      else:
+        (read, MNITemplateNode) = slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm.nii.gz', {}, True)
+
+
 
     #
     # Registering the MNI template to T1 image.
@@ -455,7 +460,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     slicer.mrmlScene.AddNode(MNINativeVolume)
     regParams = {}
     regParams["fixedVolume"] = inputT1Volume.GetID()
-    regParams["movingVolume"] = slicer.util.getNode(MNITemplateNodeName)
+    regParams["movingVolume"] = MNITemplateNode.GetID()
     regParams["samplingPercentage"] = sampling
     regParams["splineGridSize"] = '8,8,8'
     regParams["outputVolume"] = MNINativeVolume.GetID()
@@ -470,43 +475,21 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     slicer.cli.run(slicer.modules.brainsfit, None, regParams, wait_for_completion=True)
 
     #################################################################################################################
-    #                                              Gray Matter Mask                                                 #
-    #################################################################################################################
-    #
-    # Gray Matter Mask.
-    #
-    slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_GrayMatter.nii.gz')
-    MNITGrayMatterNodeName = "MNI152_T1_GrayMatter"
-
-    MNINativeGMLabel = slicer.vtkMRMLLabelMapVolumeNode()
-    slicer.mrmlScene.AddNode(MNINativeGMLabel)
-    regParams = {}
-    regParams["inputVolume"] = slicer.util.getNode(MNITGrayMatterNodeName)
-    regParams["referenceVolume"] = inputT1Volume.GetID()
-    regParams["pixelType"] = "binary"
-    regParams["outputVolume"] = MNINativeGMLabel.GetID()
-    regParams["warpTransform"] = registrationMNI2T1Transform.GetID()
-    regParams["interpolationMode"] = "NearestNeighbor"
-
-    slicer.cli.run(slicer.modules.brainsresample, None, regParams, wait_for_completion=True)
-
-    #################################################################################################################
     #                                         T2-FLAIR Image Processing                                             #
     #################################################################################################################
     if applyLSContrastEnhancer:
       #################################################################################################################
       #                                              White Matter Mask                                                #
       #################################################################################################################
-      #
-      # White Matter Mask.
-      #
-      slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_WhiteMatter.nii.gz')
-      MNITWhiteMatterNodeName = "MNI152_T1_WhiteMatter"
+      if platform.system() is "Windows":
+        (read, MNITWhiteMatterNode) = slicer.util.loadVolume(home + '\\LSSegmenter-Data\\MNI152_T1_WhiteMatter.nii.gz',{}, True)
+      else:
+        (read, MNITWhiteMatterNode) = slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_WhiteMatter.nii.gz',{}, True)
 
       MNINativeWMLabel = slicer.vtkMRMLLabelMapVolumeNode()
       slicer.mrmlScene.AddNode(MNINativeWMLabel)
       regParams = {}
-      regParams["inputVolume"] = slicer.util.getNode(MNITWhiteMatterNodeName)
+      regParams["inputVolume"] = MNITWhiteMatterNode.GetID()
       regParams["referenceVolume"] = inputT1Volume.GetID()
       regParams["pixelType"] = "binary"
       regParams["outputVolume"] = MNINativeWMLabel.GetID()
@@ -578,6 +561,25 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
       slicer.cli.run(slicer.modules.weightedenhancementimagefilter, None, regParams, wait_for_completion=True)
 
       #################################################################################################################
+      #                                              Gray Matter Mask                                                 #
+      #################################################################################################################
+      # Parameter(0 / 0): inputVolume(Input
+      # Parameter(0 / 1): imageModality(Image
+      # Parameter(0 / 2): outputLabel(Brain
+      # Parameter(1 / 0): oneTissue(Separate
+      # Parameter (1 / 1): typeTissue(Tissue)
+      MNINativeGMLabel = slicer.vtkMRMLLabelMapVolumeNode()
+      slicer.mrmlScene.AddNode(MNINativeGMLabel)
+      regParams = {}
+      regParams["inputVolume"] = MNINativeVolume.GetID()
+      regParams["imageModality"] = "T1"
+      regParams["outputLabel"] = MNINativeGMLabel.GetID()
+      regParams["oneTissue"] = True
+      regParams["typeTissue"] = "Gray Matter"
+
+      slicer.cli.run(slicer.modules.basicbraintissues, None, regParams, wait_for_completion=True)
+
+      #################################################################################################################
       #                                              Bayesian Segmentation                                            #
       #################################################################################################################
       slicer.util.showStatusMessage("Step 5/...: Hyperintense Lesion Segmentation...")
@@ -594,21 +596,42 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
       slicer.mrmlScene.RemoveNode(inputFLAIRBiasSmoothVolume)
       slicer.mrmlScene.RemoveNode(inputFLAIRBiasSmoothLesionEnhancedVolume)
       slicer.mrmlScene.RemoveNode(inputFLAIREnhancedVolume)
+
+      #slicer.mrmlScene.RemoveNode(MNINativeWMLabel)
+      #slicer.mrmlScene.RemoveNode(MNITWhiteMatterNode)
+
       slicer.mrmlScene.RemoveNode(registrationFLAIR2T1Transform)
       slicer.mrmlScene.RemoveNode(inputFLAIR_T1Volume)
       slicer.mrmlScene.RemoveNode(registrationMNI2T1Transform)
       slicer.mrmlScene.RemoveNode(MNINativeVolume)
-      slicer.mrmlScene.RemoveNode(MNINativeWMLabel)
       slicer.mrmlScene.RemoveNode(MNINativeGMLabel)
-      slicer.mrmlScene.RemoveNode(slicer.util.getNode(MNITemplateNodeName))
-      slicer.mrmlScene.RemoveNode(slicer.util.getNode(MNITGrayMatterNodeName))
-      slicer.mrmlScene.RemoveNode(slicer.util.getNode(MNITWhiteMatterNodeName))
+      slicer.mrmlScene.RemoveNode(MNITemplateNode)
 
       slicer.util.showStatusMessage("Processing completed")
       logging.info('Processing completed')
 
       return True
     else:
+      #################################################################################################################
+      #                                              Gray Matter Mask                                                 #
+      #################################################################################################################
+      # TODO Rever aplicacao da mascara de GM, o resultado nao sai muito bom para regioes mistas...Ver se eh necessario manter essa segmentacao com GM
+      # Parameter(0 / 0): inputVolume(Input
+      # Parameter(0 / 1): imageModality(Image
+      # Parameter(0 / 2): outputLabel(Brain
+      # Parameter(1 / 0): oneTissue(Separate
+      # Parameter (1 / 1): typeTissue(Tissue)
+      MNINativeGMLabel = slicer.vtkMRMLLabelMapVolumeNode()
+      slicer.mrmlScene.AddNode(MNINativeGMLabel)
+      regParams = {}
+      regParams["inputVolume"] = MNINativeVolume.GetID()
+      regParams["imageModality"] = "T1"
+      regParams["outputLabel"] = MNINativeGMLabel.GetID()
+      regParams["oneTissue"] = True
+      regParams["typeTissue"] = "Gray Matter"
+
+      slicer.cli.run(slicer.modules.basicbraintissues, None, regParams, wait_for_completion=True)
+
       #################################################################################################################
       #                                              Bayesian Segmentation                                            #
       #################################################################################################################
@@ -627,13 +650,13 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
       slicer.mrmlScene.RemoveNode(registrationMNI2T1Transform)
       slicer.mrmlScene.RemoveNode(MNINativeVolume)
       slicer.mrmlScene.RemoveNode(MNINativeGMLabel)
-      slicer.mrmlScene.RemoveNode(slicer.util.getNode(MNITemplateNodeName))
-      slicer.mrmlScene.RemoveNode(slicer.util.getNode(MNITGrayMatterNodeName))
+      slicer.mrmlScene.RemoveNode(MNITemplateNode)
 
       slicer.util.showStatusMessage("Processing completed")
       logging.info('Processing completed')
 
       return True
+
 
 
 class LSSegmenterTest(ScriptedLoadableModuleTest):
