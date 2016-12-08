@@ -403,6 +403,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     #                                              White Matter Mask                                                #
     #################################################################################################################
     slicer.util.showStatusMessage("Step 2/6: Brain white matter estimation...")
+    # TODO Colocar chamadar de leitura para o windows!
     (read, MNITWhiteMatterNode)=slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_WhiteMatter.nii.gz',{},True)
 
     MNINativeWMLabel = slicer.vtkMRMLLabelMapVolumeNode()
