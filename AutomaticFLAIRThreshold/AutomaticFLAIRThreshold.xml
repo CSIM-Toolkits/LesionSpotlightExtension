@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <executable>
   <category>Examples</category>
-  <title>AutomaticFLAIRThreshold</title>
-  <description><![CDATA[This is a CLI module that can be bundled in an extension]]></description>
+  <title>Automatic FLAIR Threshold</title>
+  <description><![CDATA[This is a CLI supporting module and it is supposed to not be used directly with a simple input image]]></description>
   <version>0.0.1</version>
-  <documentation-url>http://www.example.com/Slicer/Modules/AutomaticFLAIRThreshold</documentation-url>
+  <documentation-url></documentation-url>
   <license>Slicer</license>
-  <contributor>FirstName LastName (Institution), FirstName LastName (Institution)</contributor>
-  <acknowledgements>This work was partially funded by NIH grant NXNNXXNNNNNN-NNXN</acknowledgements>
+  <contributor>Antonio Carlos Senra Filho (University of Sao Paulo), Luiz Otavio Murta Junior (University of Sao Paulo)</contributor>
+  <acknowledgements>This work was partially funded by CNPq grant 201871/2015-7/SWE and CAPES</acknowledgements>
   <parameters>
     <label>IO</label>
     <description><![CDATA[Input/output parameters]]></description>
@@ -37,7 +37,7 @@
       <label>Brain Tissue Labels</label>
       <channel>input</channel>
       <index>3</index>
-      <description><![CDATA[A lesion map informing the white matter, gray matter and CSF volumes. This tissue map must be organized in the following way: CSF=1, GM=2, WM=3 and BACKGROUND=0. The Basic Brain Tissues module output can be used here.]]></description>
+      <description><![CDATA[A lesion map informing the white matter, gray matter and CSF volumes. This tissue map must be organized in the following way: CSF=1, GM=2, WM=3 and BACKGROUND=0. The Basic Brain Tissues module output can be used here. In the case that your tissue mask has different values, please set the variables Gray Matter Mask Value and White Matter Mask Value.]]></description>
     </image>
     <image type="label">
       <name>outputLesionMap</name>
@@ -48,8 +48,8 @@
     </image>
   </parameters>
   <parameters>
-    <label>IO</label>
-    <description><![CDATA[Input/output parameters]]></description>
+    <label>Segmentation Parameters</label>
+    <description><![CDATA[Segmentation Parameters]]></description>
     <float>
       <name>absErrorThreshold</name>
       <longflag>absErrorThreshold</longflag>
@@ -81,7 +81,7 @@
       <longflag>wmMatch</longflag>
       <flag>w</flag>
       <label>White Matter Lesion Match</label>
-      <description><![CDATA[...]]></description>
+      <description><![CDATA[Set the local neighborhood searching for label refinement step. This metric defines the percentage of white matter tissue that surounds the hyperintense lesions. Higher values defines a conservative segmentation.]]></description>
       <default>0.6</default>
       <constraints>
         <minimum>0.1</minimum>
@@ -102,5 +102,19 @@
         <step>1</step>
       </constraints>
     </integer>
+    <integer>
+      <name>gmMaskValue</name>
+      <longflag>gmMaskValue</longflag>
+      <label>Gray Matter Mask Value</label>
+      <description><![CDATA[Set the mask value that represents the gray matter. Default is defined based on the Basic Brain Tissues module output.]]></description>
+      <default>2</default>
+    </integer>
+    <integer>
+      <name>wmMaskValue</name>
+      <longflag>wmMaskValue</longflag>
+      <label>White Matter Mask Value</label>
+      <description><![CDATA[Set the mask value that represents the white matter. Default is defined based on the Basic Brain Tissues module output.]]></description>
+      <default>3</default>
+    </integer>    
   </parameters>
 </executable>

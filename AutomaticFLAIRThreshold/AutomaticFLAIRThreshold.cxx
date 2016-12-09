@@ -41,13 +41,11 @@ int DoIt( int argc, char * argv[], T )
     PARSE_ARGS;
 
     typedef    T                InputPixelType;
-    typedef    T                OutputPixelType;
     typedef    unsigned char     MaskLabelPixelType;
 
-    unsigned char GMlabel = 2, WMlabel = 3;
+    unsigned char GMlabel = (unsigned char)gmMaskValue, WMlabel = (unsigned char)wmMaskValue;
 
     typedef itk::Image<InputPixelType,  3>      InputImageType;
-    typedef itk::Image<OutputPixelType, 3>      OutputImageType;
     typedef itk::Image<MaskLabelPixelType, 3>   MaskImageType;
 
     typedef itk::ImageFileReader<InputImageType>    ReaderType;

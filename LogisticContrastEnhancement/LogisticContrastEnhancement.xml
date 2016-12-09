@@ -7,7 +7,7 @@
   <documentation-url></documentation-url>
   <license>Slicer</license>
   <contributor>Antonio Carlos Senra Filho (University of Sao Paulo), Luiz Otavio Murta Junior (University of Sao Paulo)</contributor>
-  <acknowledgements>This work was partially funded by CAPES and CNPq</acknowledgements>
+  <acknowledgements>This work was partially funded by CNPq grant 201871/2015-7/SWE and CAPES</acknowledgements>
   <parameters>
     <label>IO</label>
     <description><![CDATA[Input/output parameters]]></description>

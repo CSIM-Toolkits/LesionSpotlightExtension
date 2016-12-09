@@ -39,12 +39,11 @@ class LSContrastEnhancer(ScriptedLoadableModule):
     self.parent.dependencies = []
     self.parent.contributors = ["John Doe (AnyWare Corp.)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
-    This is an example of scripted loadable module bundled in an extension.
-    It performs a simple thresholding on the input volume and optionally captures a screenshot.
+    This Module offer a method to increase hyperintense lesions on T2-FLAIR MRI acquisitions, which is mainly applicable in Multiple Sclerosis lesion detection.
+    More details about the modules functionalities and how to use it, please check the wiki page: https://www.slicer.org/wiki/Documentation/Nightly/Extensions/LesionSpotlight
     """
     self.parent.acknowledgementText = """
-    This file was originally developed by Jean-Christophe Fillion-Robin, Kitware Inc.
-    and Steve Pieper, Isomics, Inc. and was partially funded by NIH grant 3P41RR013218-12S1.
+    This work was partially funded by CNPq grant 201871/2015-7/SWE and CAPES
 """ # replace with organization, grant and thanks.
 
 #
@@ -232,7 +231,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     self.setThresholdLFMethodBooleanWidget.addItem("Intermodes")
     self.setThresholdLFMethodBooleanWidget.addItem("IsoData")
     self.setThresholdLFMethodBooleanWidget.setToolTip(
-      "Choose the threhsold method for the lesion enhancement procedure. Options: MaximumEntropy, Otsu")
+      "Choose the threhsold method for the lesion enhancement procedure. Options: MaximumEntropy, Otsu, Moments, Intermodes and IsoData")
     parametersLesionEnhancementFormLayout.addRow("Threshold Method ", self.setThresholdLFMethodBooleanWidget)
 
     #
