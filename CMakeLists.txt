@@ -24,6 +24,7 @@ add_subdirectory(LogisticContrastEnhancement)
 add_subdirectory(LabelRefinement)
 add_subdirectory(LSContrastEnhancer)
 add_subdirectory(WeightedEnhancementImageFilter)
+add_subdirectory(AutomaticFLAIRThreshold)
 ## NEXT_MODULE
 
 #-----------------------------------------------------------------------------

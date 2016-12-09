@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<executable>
+  <category>Examples</category>
+  <title>AutomaticFLAIRThreshold</title>
+  <description><![CDATA[This is a CLI module that can be bundled in an extension]]></description>
+  <version>0.0.1</version>
+  <documentation-url>http://www.example.com/Slicer/Modules/AutomaticFLAIRThreshold</documentation-url>
+  <license>Slicer</license>
+  <contributor>FirstName LastName (Institution), FirstName LastName (Institution)</contributor>
+  <acknowledgements>This work was partially funded by NIH grant NXNNXXNNNNNN-NNXN</acknowledgements>
+  <parameters>
+    <label>IO</label>
+    <description><![CDATA[Input/output parameters]]></description>
+    <image type="scalar">
+      <name>inputT1Volume</name>
+      <label>T1 Volume</label>
+      <channel>input</channel>
+      <index>0</index>
+      <description><![CDATA[Input T1 volume]]></description>
+    </image>
+    <image type="scalar">
+      <name>inputT2FLAIRVolume</name>
+      <label>T2-FLAIR Volume</label>
+      <channel>input</channel>
+      <index>1</index>
+      <description><![CDATA[Input T2-FLAIR volume]]></description>
+    </image>
+    <image type="scalar">
+      <name>inputMNIVolume</name>
+      <label>MNI Volume</label>
+      <channel>input</channel>
+      <index>2</index>
+      <description><![CDATA[Input MNI template volume]]></description>
+    </image>
+    <image type="label">
+      <name>brainLabels</name>
+      <label>Brain Tissue Labels</label>
+      <channel>input</channel>
+      <index>3</index>
+      <description><![CDATA[A lesion map informing the white matter, gray matter and CSF volumes. This tissue map must be organized in the following way: CSF=1, GM=2, WM=3 and BACKGROUND=0. The Basic Brain Tissues module output can be used here.]]></description>
+    </image>
+    <image type="label">
+      <name>outputLesionMap</name>
+      <label>Output Lesion Map</label>
+      <channel>output</channel>
+      <index>4</index>
+      <description><![CDATA[Output Lesion Map]]></description>
+    </image>
+  </parameters>
+  <parameters>
+    <label>IO</label>
+    <description><![CDATA[Input/output parameters]]></description>
+    <float>
+      <name>absErrorThreshold</name>
+      <longflag>absErrorThreshold</longflag>
+      <flag>e</flag>
+      <label>Absolute Error Threshold</label>
+      <description><![CDATA[Define the absolute error threshold for gray matter statistics. This measure evaluated the similarity between the MNI152 template and the T2-FLAIR gray matter fluctuation estimative. A higher error gives a higher variability in the final lesion segmentation.]]></description>
+      <default>0.1</default>
+      <constraints>
+        <minimum>0.01</minimum>
+        <maximum>0.9</maximum>
+        <step>0.01</step>
+      </constraints>
+    </float>
+    <float>
+      <name>gamma</name>
+      <longflag>gamma</longflag>
+      <flag>g</flag>
+      <label>Gamma</label>
+      <description><![CDATA[Define the outlier detection based on units of standard deviation in the T2-FLAIR gray matter voxel intensity distribution.]]></description>
+      <default>2.0</default>
+      <constraints>
+        <minimum>0.1</minimum>
+        <maximum>4</maximum>
+        <step>0.1</step>
+      </constraints>
+    </float>
+    <float>
+      <name>wmMatch</name>
+      <longflag>wmMatch</longflag>
+      <flag>w</flag>
+      <label>White Matter Lesion Match</label>
+      <description><![CDATA[...]]></description>
+      <default>0.6</default>
+      <constraints>
+        <minimum>0.1</minimum>
+        <maximum>1.0</maximum>
+        <step>0.1</step>
+      </constraints>
+    </float>
+    <integer>
+      <name>minimumSize</name>
+      <longflag>minimumSize</longflag>
+      <flag>s</flag>
+      <label>Minimum Lesion Size</label>
+      <description><![CDATA[Set the minimum lesion size adopted as a true lesion in the final lesion map. Units given in number of voxels.]]></description>
+      <default>10</default>
+      <constraints>
+        <minimum>1</minimum>
+        <maximum>100</maximum>
+        <step>1</step>
+      </constraints>
+    </integer>
+  </parameters>
+</executable>
