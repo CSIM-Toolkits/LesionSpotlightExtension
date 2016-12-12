@@ -29,13 +29,11 @@ if (WIN32)
 file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}\\LSSegmenter-Data\\MNI152_T1_1mm_brain.nii.gz DESTINATION $ENV{HOME}\\LSSegmenter-Data\\)
 file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}\\LSSegmenter-Data\\MNI152_T1_1mm.nii.gz DESTINATION $ENV{HOME}\\LSSegmenter-Data\\)
 file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}\\LSSegmenter-Data\\MNI152_T1_WhiteMatter.nii.gz DESTINATION $ENV{HOME}\\LSSegmenter-Data\\)
-file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}\\LSSegmenter-Data\\MNI152_T1_GrayMatter.nii.gz DESTINATION $ENV{HOME}\\LSSegmenter-Data\\)
 endif (WIN32)
 if (UNIX)
 file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/LSSegmenter-Data/MNI152_T1_1mm_brain.nii.gz DESTINATION $ENV{HOME}/LSSegmenter-Data/)
 file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/LSSegmenter-Data/MNI152_T1_1mm.nii.gz DESTINATION $ENV{HOME}/LSSegmenter-Data/)
 file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/LSSegmenter-Data/MNI152_T1_WhiteMatter.nii.gz DESTINATION $ENV{HOME}/LSSegmenter-Data/)
-file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/LSSegmenter-Data/MNI152_T1_GrayMatter.nii.gz DESTINATION $ENV{HOME}/LSSegmenter-Data/)
 endif (UNIX)
 
 #-----------------------------------------------------------------------------
