@@ -217,7 +217,7 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     self.setPercSamplingQWidget.setMaximum(1)
     self.setPercSamplingQWidget.setMinimum(0.0001)
     self.setPercSamplingQWidget.setSingleStep(0.001)
-    self.setPercSamplingQWidget.setValue(0.002)
+    self.setPercSamplingQWidget.setValue(0.05)
     self.setPercSamplingQWidget.setToolTip("Percentage of voxel used in registration.")
     parametersRegistrationFormLayout.addRow("Percentage Of Samples ", self.setPercSamplingQWidget)
 
