@@ -222,9 +222,7 @@ int DoIt( int argc, char * argv[], T )
         }
     }
 
-    //2: Remove areas between ventricules
-
-    //3: Apply a minimum lesion size
+    //2: Apply a minimum lesion size
     typedef unsigned int ConnectedVoxelType;
     typedef itk::Image<ConnectedVoxelType, 3>   ConnectedVoxelImageType;
     typedef itk::ConnectedComponentImageFilter<MaskImageType, ConnectedVoxelImageType> ConnectedLabelType;

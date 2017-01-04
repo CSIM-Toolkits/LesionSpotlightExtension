@@ -36,10 +36,10 @@ class LSSegmenter(ScriptedLoadableModule):
     ScriptedLoadableModule.__init__(self, parent)
     self.parent.title = "LS Segmenter"
     self.parent.categories = ["Segmentation"]
-    self.parent.dependencies = [] #TODO Colocar dependencia BrainTissues
+    self.parent.dependencies = [] #TODO Colocar dependencia BrainTissues, AnomalousFilters
     self.parent.contributors = ["Antonio Carlos Senra Filho (University of Sao Paulo), Luiz Otavio Murta Junior (University of Sao Paulo)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
-    This Module offer a voxel-intensity lesion segmentation method based on logistic contrast enhancement and threshold level.
+    This module offer a voxel-intensity lesion segmentation method based on logistic contrast enhancement and threshold level.
     At moment, this method was studied on hyperintense T2-FLAIR lesion segmentation in Multiple Sclerosis lesion segmentation.
     More details about the modules functionalities and how to use it, please check the wiki page: https://www.slicer.org/wiki/Documentation/Nightly/Extensions/LesionSpotlight
     """
@@ -57,8 +57,7 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
   """
 
   def setup(self):
-    #ScriptedLoadableModuleWidget.setup(self)
-	# TODO Retirar as variaveis de valores GM e WM da mascara...pode deixar automatico
+    ScriptedLoadableModuleWidget.setup(self)
     # Instantiate and connect widgets ...
 
     #
@@ -217,7 +216,7 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     self.setPercSamplingQWidget.setMaximum(1)
     self.setPercSamplingQWidget.setMinimum(0.0001)
     self.setPercSamplingQWidget.setSingleStep(0.001)
-    self.setPercSamplingQWidget.setValue(0.05)
+    self.setPercSamplingQWidget.setValue(0.02)
     self.setPercSamplingQWidget.setToolTip("Percentage of voxel used in registration.")
     parametersRegistrationFormLayout.addRow("Percentage Of Samples ", self.setPercSamplingQWidget)
 
@@ -255,28 +254,16 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     parametersSegmentationFormLayout = qt.QFormLayout(parametersSegmentationParametersCollapsibleButton)
 
     #
-    # Absolute Error Threshold
+    # Lesion Threshold
     #
-    self.setAbsErrorThresholdWidget = qt.QDoubleSpinBox()
-    self.setAbsErrorThresholdWidget.setMaximum(0.99)
-    self.setAbsErrorThresholdWidget.setMinimum(0.01)
-    self.setAbsErrorThresholdWidget.setSingleStep(0.01)
-    self.setAbsErrorThresholdWidget.setValue(0.1)
-    self.setAbsErrorThresholdWidget.setToolTip("Define the absolute error threshold for gray matter statistics. "
-                                               "This measure evaluated the similarity between the MNI152 template and the T2-FLAIR gray matter "
-                                               "fluctuation estimative. A higher error gives a higher variability in the final lesion segmentation")
-    parametersSegmentationFormLayout.addRow("Absolute Error Threshold ", self.setAbsErrorThresholdWidget)
-
-    #
-    # Gamma
-    #
-    self.setGammaWidget = qt.QDoubleSpinBox()
-    self.setGammaWidget.setMinimum(0.1)
-    self.setGammaWidget.setMaximum(5)
-    self.setGammaWidget.setSingleStep(0.1)
-    self.setGammaWidget.setValue(2)
-    self.setGammaWidget.setToolTip("Define the outlier detection based on units of standard deviation in the T2-FLAIR gray matter voxel intensity distribution.")
-    parametersSegmentationFormLayout.addRow("Gamma ", self.setGammaWidget)
+    self.setLesionThresholdWidget = ctk.ctkSliderWidget()
+    self.setLesionThresholdWidget.singleStep = 0.01
+    self.setLesionThresholdWidget.minimum = 0.5
+    self.setLesionThresholdWidget.maximum = 0.99
+    self.setLesionThresholdWidget.value = 0.95
+    self.setLesionThresholdWidget.setToolTip("Define the lesion threshold used in the probability map, i.e. the percentage of voxels that do not belongs to the MS lesion region."
+                                             " Example: l=0.95 means that only 5% of voxels are actual MS lesions.")
+    parametersSegmentationFormLayout.addRow("Lesion Threshold", self.setLesionThresholdWidget)
 
     #
     # White Matter Search Matching
@@ -287,7 +274,8 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     self.setWMMatchWidget.setSingleStep(0.1)
     self.setWMMatchWidget.setValue(0.6)
     self.setWMMatchWidget.setToolTip("Set the local neighborhood searching for label refinement step. This metric defines the percentage of white matter"
-                                     " tissue that surrounds the hyperintense lesions. Higher values defines a conservative segmentation.")
+                                     " tissue surrounding the hyperintense lesions. Large values defines a conservative segmentation, i.e. in order to define a true MS lesion"
+                                     "it must be close to certain percentage of white matter area.")
     parametersSegmentationFormLayout.addRow("White Matter Matching ", self.setWMMatchWidget)
 
     #
@@ -300,24 +288,39 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     parametersSegmentationFormLayout.addRow("Minimum Lesion Size ", self.setMinimumLesionWidget)
 
     #
-    # Gray Matter Mask Value
+    # Lesions Map Iteartive Updates
     #
-    self.setGMMaskValueWidget = qt.QSpinBox()
-    self.setGMMaskValueWidget.setMaximum(255)
-    self.setGMMaskValueWidget.setMinimum(1)
-    self.setGMMaskValueWidget.setValue(2)
-    self.setGMMaskValueWidget.setToolTip("Set the mask value that represents the gray matter. Default is defined based on the Basic Brain Tissues module output.")
-    parametersSegmentationFormLayout.addRow("Gray Matter Mask Value ", self.setGMMaskValueWidget)
+    self.setLesionMapUpdatesWidget = ctk.ctkSliderWidget()
+    self.setLesionMapUpdatesWidget.singleStep = 1
+    self.setLesionMapUpdatesWidget.minimum = 1
+    self.setLesionMapUpdatesWidget.maximum = 10
+    self.setLesionMapUpdatesWidget.value = 4
+    self.setLesionMapUpdatesWidget.setToolTip("Set the number of updates that will be applied over the lesion probability map. Usually 4 iterations result "
+                                              "in a reasonbale lesion segmentation, but if the lesions are subtle you may increase this parameter.")
+    parametersSegmentationFormLayout.addRow("Lesion Map Iterative Updates", self.setLesionMapUpdatesWidget)
 
     #
-    # White Matter Mask Value
+    # Threshold Method Area
     #
-    self.setWMMaskValueWidget = qt.QSpinBox()
-    self.setWMMaskValueWidget.setMaximum(255)
-    self.setWMMaskValueWidget.setMinimum(1)
-    self.setWMMaskValueWidget.setValue(3)
-    self.setWMMaskValueWidget.setToolTip("Set the mask value that represents the white matter. Default is defined based on the Basic Brain Tissues module output.")
-    parametersSegmentationFormLayout.addRow("White Matter Mask Value ", self.setWMMaskValueWidget)
+    self.setThresholdLFMethodBooleanWidget = ctk.ctkComboBox()
+    self.setThresholdLFMethodBooleanWidget.addItem("MaximumEntropy")
+    self.setThresholdLFMethodBooleanWidget.addItem("Otsu")
+    self.setThresholdLFMethodBooleanWidget.addItem("Moments")
+    self.setThresholdLFMethodBooleanWidget.addItem("Intermodes")
+    self.setThresholdLFMethodBooleanWidget.addItem("IsoData")
+    self.setThresholdLFMethodBooleanWidget.setToolTip(
+      "Choose the threhsold method for the lesion enhancement procedure. Options: MaximumEntropy, Otsu, Moments, Intermodes and IsoData")
+    parametersSegmentationFormLayout.addRow("Threshold Method ", self.setThresholdLFMethodBooleanWidget)
+
+    #
+    # Number Of Bins
+    #
+    self.setNumberOfBinsWidget = qt.QSpinBox()
+    self.setNumberOfBinsWidget.setMaximum(256)
+    self.setNumberOfBinsWidget.setMinimum(10)
+    self.setNumberOfBinsWidget.setValue(128)
+    self.setNumberOfBinsWidget.setToolTip("Number Of Bins for the histogram calculation")
+    parametersSegmentationFormLayout.addRow("Number Of Bins ", self.setNumberOfBinsWidget)
 
     # connections
     self.applyButton.connect('clicked(bool)', self.onApplyButton)
@@ -347,15 +350,15 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
               ,self.setPercSamplingQWidget.value
               ,self.setInitiationRegistrationBooleanWidget.currentText
               ,self.setInterpolationMethodBooleanWidget.currentText
-              ,self.setAbsErrorThresholdWidget.value
-              ,self.setGammaWidget.value
               ,self.setWMMatchWidget.value
               ,self.setMinimumLesionWidget.value
-              ,self.setGMMaskValueWidget.value
-              ,self.setWMMaskValueWidget.value
               ,self.setFilteringCondutanceWidget.value
               ,self.setFilteringNumberOfIterationWidget.value
               ,self.setFilteringQWidget.value
+              ,self.setLesionMapUpdatesWidget.value
+              ,self.setThresholdLFMethodBooleanWidget.currentText
+              ,self.setNumberOfBinsWidget.value
+              ,self.setLesionThresholdWidget.value
               )
 
 
@@ -401,7 +404,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     return True
 
   def run(self, inputT1Volume, inputFLAIRVolume, outputLabel, isBET,applyNoiseAttenuation,applyBias, sampling, initiation, interpolation,
-          absError, gamma, wmMatch, minimumSize, gmMaskValue, wmMaskValue, conductance, nIter, qValue):
+          wmMatch, minimumSize, conductance, nIter, qValue, lUpdate, thrMethod, numBins, lThr):
     """
     Run the actual algorithm
     """
@@ -556,34 +559,59 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                            Brain tissues estimative                                           #
     #################################################################################################################
-    brainTissuesLabel = slicer.vtkMRMLLabelMapVolumeNode()
-    slicer.mrmlScene.AddNode(brainTissuesLabel)
+    brainWMLabel = slicer.vtkMRMLLabelMapVolumeNode()
+    slicer.mrmlScene.AddNode(brainWMLabel)
     regParams = {}
     regParams["inputVolume"] = MNINativeVolume.GetID()
-    regParams["outputLabel"] = brainTissuesLabel.GetID()
+    regParams["outputLabel"] = brainWMLabel.GetID()
     regParams["imageModality"] = "T1"
-    regParams["oneTissue"] = False
-    regParams["typeTissue"] = "Gray Matter"
+    regParams["oneTissue"] = True
+    regParams["typeTissue"] = "White Matter"
 
     slicer.cli.run(slicer.modules.basicbraintissues, None, regParams, wait_for_completion=True)
 
     #################################################################################################################
-    #                                            MNI segmentation                                                   #
+    #                                            Lesion segmentation                                                #
     #################################################################################################################
+    lesionUpdate = slicer.vtkMRMLScalarVolumeNode()
+    slicer.mrmlScene.AddNode(lesionUpdate)
+    lUpdate=int(lUpdate)
+    for i in range(lUpdate):
+      # Enhancing lesion contrast...
+      regParams = {}
+      regParams["inputVolume"] = inputFLAIR_T1Volume.GetID()
+      regParams["outputVolume"] = lesionUpdate.GetID()
+      regParams["maskVolume"] = brainWMLabel.GetID()
+      regParams["numberOfBins"] = numBins
+      regParams["flipObject"] = False
+      regParams["thrType"] = thrMethod
+
+      slicer.cli.run(slicer.modules.logisticcontrastenhancement, None, regParams, wait_for_completion=True)
+
+      # Increasing FLAIR lesions contrast...
+      regParams = {}
+      regParams["inputVolume"] = inputFLAIR_T1Volume.GetID()
+      regParams["contrastMap"] = lesionUpdate.GetID()
+      regParams["regionMask"] = brainWMLabel.GetID()
+      regParams["outputVolume"] = inputFLAIR_T1Volume.GetID()
+      regParams["weight"] = 0
+      regParams["lesionThr"] = lThr
+
+      slicer.cli.run(slicer.modules.weightedenhancementimagefilter, None, regParams, wait_for_completion=True)
+
+
+    #
+    # Lesion Map Refinement
+    #
     params= {}
-    params["inputT1Volume"]= inputT1Volume.GetID()
-    params["inputT2FLAIRVolume"] = inputFLAIR_T1Volume.GetID()
-    params["inputMNIVolume"] = MNINativeVolume.GetID()
-    params["brainLabels"] = brainTissuesLabel.GetID()
+    params["lesionProbMap"]= lesionUpdate.GetID()
+    params["wmMask"] = brainWMLabel.GetID()
     params["outputLesionMap"] = outputLabel.GetID()
-    params["absErrorThreshold"] = absError
-    params["gamma"] = gamma
+    params["lesionThr"] = (1-lThr)
     params["wmMatch"] = wmMatch
     params["minimumSize"] = minimumSize
-    params["gmMaskValue"] = gmMaskValue
-    params["wmMaskValue"] = wmMaskValue
 
-    slicer.cli.run(slicer.modules.automaticflairthreshold, None, params, wait_for_completion=True)
+    slicer.cli.run(slicer.modules.lesionmaprefinement, None, params, wait_for_completion=True)
 
     # Removing unnecessary nodes
     slicer.mrmlScene.RemoveNode(registrationFLAIR2T1Transform)
@@ -592,7 +620,8 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     slicer.mrmlScene.RemoveNode(MNINativeVolume)
     slicer.mrmlScene.RemoveNode(MNITemplateNode)
     slicer.mrmlScene.RemoveNode(MNIBrainTemplateNode)
-    slicer.mrmlScene.RemoveNode(brainTissuesLabel)
+    slicer.mrmlScene.RemoveNode(brainWMLabel)
+    slicer.mrmlScene.RemoveNode(lesionUpdate)
 
     slicer.util.showStatusMessage("Processing completed")
     logging.info('Processing completed')
