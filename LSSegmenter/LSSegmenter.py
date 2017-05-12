@@ -36,7 +36,7 @@ class LSSegmenter(ScriptedLoadableModule):
     ScriptedLoadableModule.__init__(self, parent)
     self.parent.title = "LS Segmenter"
     self.parent.categories = ["Segmentation"]
-    self.parent.dependencies = [] #TODO Colocar dependencia BrainTissues, AnomalousFilters
+    self.parent.dependencies = [] #TODO Colocar dependencia AnomalousFilters
     self.parent.contributors = ["Antonio Carlos Senra Filho (University of Sao Paulo), Luiz Otavio Murta Junior (University of Sao Paulo)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
     This module offer a voxel-intensity lesion segmentation method based on logistic contrast enhancement and threshold level.
@@ -258,7 +258,7 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     #
     self.setLesionThresholdWidget = ctk.ctkSliderWidget()
     self.setLesionThresholdWidget.singleStep = 0.01
-    self.setLesionThresholdWidget.minimum = 0.5
+    self.setLesionThresholdWidget.minimum = 0.05
     self.setLesionThresholdWidget.maximum = 0.99
     self.setLesionThresholdWidget.value = 0.95
     self.setLesionThresholdWidget.setToolTip("Define the lesion threshold used in the probability map, i.e. the percentage of voxels that do not belongs to the MS lesion region."
@@ -283,6 +283,7 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     #
     self.setMinimumLesionWidget = qt.QSpinBox()
     self.setMinimumLesionWidget.setMinimum(1)
+    self.setMinimumLesionWidget.setMaximum(5000)
     self.setMinimumLesionWidget.setValue(10)
     self.setMinimumLesionWidget.setToolTip("Set the minimum lesion size adopted as a true lesion in the final lesion map. Units given in number of voxels.")
     parametersSegmentationFormLayout.addRow("Minimum Lesion Size ", self.setMinimumLesionWidget)
@@ -419,20 +420,20 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                        Registration  - FLAIR to T1                                            #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 1/...: T2-FLAIR to T1 registration...")
-    registrationFLAIR2T1Transform = slicer.vtkMRMLLinearTransformNode()
-    slicer.mrmlScene.AddNode(registrationFLAIR2T1Transform)
-    inputFLAIR_T1Volume = slicer.vtkMRMLScalarVolumeNode()
-    slicer.mrmlScene.AddNode(inputFLAIR_T1Volume)
+    slicer.util.showStatusMessage("Step 1/...: T1 to T2-FLAIR registration...")
+    registrationT12FLAIRTransform = slicer.vtkMRMLLinearTransformNode()
+    registrationT12FLAIRTransform.SetName("regT12FLAIR_linear")
+    slicer.mrmlScene.AddNode(registrationT12FLAIRTransform)
+    inputT1_FLAIRVolume = slicer.vtkMRMLScalarVolumeNode()
+    slicer.mrmlScene.AddNode(inputT1_FLAIRVolume)
     regParams = {}
-    regParams["fixedVolume"] = inputT1Volume.GetID()
-    regParams["movingVolume"] = inputFLAIRVolume.GetID()
+    regParams["fixedVolume"] = inputFLAIRVolume.GetID()
+    regParams["movingVolume"] = inputT1Volume.GetID()
     regParams["samplingPercentage"] = sampling
-    regParams["outputVolume"] = inputFLAIR_T1Volume.GetID()
-    regParams["linearTransform"] = registrationFLAIR2T1Transform.GetID()
+    regParams["outputVolume"] = inputT1_FLAIRVolume.GetID()
+    regParams["linearTransform"] = registrationT12FLAIRTransform.GetID()
     regParams["initializeTransformMode"] = initiation
     regParams["useRigid"] = True
-    # regParams["useAffine"] = True
     regParams["interpolationMode"] = interpolation
 
     slicer.cli.run(slicer.modules.brainsfit, None, regParams, wait_for_completion=True)
@@ -460,128 +461,104 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     # Registering the MNI template to T1 image.
     #
     slicer.util.showStatusMessage("Step 1/...: MNI152 to T1 registration...")
-    registrationMNI2T1Transform = slicer.vtkMRMLBSplineTransformNode()
+    registrationMNI2T1Transform = slicer.vtkMRMLLinearTransformNode()
+    registrationMNI2T1Transform.SetName("regMNI2T1_linear")
     slicer.mrmlScene.AddNode(registrationMNI2T1Transform)
 
     regParams = {}
-    regParams["fixedVolume"] = inputT1Volume.GetID()
+    regParams["fixedVolume"] = inputT1_FLAIRVolume.GetID()
     regParams["movingVolume"] = MNITemplateNode.GetID()
     regParams["samplingPercentage"] = sampling
     regParams["splineGridSize"] = '8,8,8'
-    regParams["bsplineTransform"] = registrationMNI2T1Transform.GetID()
+    regParams["linearTransform"] = registrationMNI2T1Transform.GetID()
     regParams["initializeTransformMode"] = initiation
     regParams["useRigid"] = True
     regParams["useAffine"] = True
-    regParams["useBSpline"] = True
     regParams["interpolationMode"] = interpolation
 
     slicer.cli.run(slicer.modules.brainsfit, None, regParams, wait_for_completion=True)
 
-    (read, MNIBrainTemplateNode) = slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm_brain.nii.gz', {}, True)
-    MNINativeVolume = slicer.vtkMRMLScalarVolumeNode()
-    slicer.mrmlScene.AddNode(MNINativeVolume)
+    if platform.system() is "Windows":
+      (read, MNIWM_thin_Label) = slicer.util.loadLabelVolume(home + '\\LSSegmenter-Data\\MNI152_T1_1mm_WhiteMatter_thinner.nii.gz', {}, True)
+      (read, MNIWMLabel) = slicer.util.loadLabelVolume(home + '\\LSSegmenter-Data\\MNI152_T1_WhiteMatter.nii.gz', {}, True)
+    else:
+      (read, MNIWM_thin_Label) = slicer.util.loadLabelVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm_WhiteMatter_thinner.nii.gz', {}, True)
+      (read, MNIWMLabel) = slicer.util.loadLabelVolume(home + '/LSSegmenter-Data/MNI152_T1_WhiteMatter.nii.gz', {}, True)
+
+    brainWM_thin_Label = slicer.vtkMRMLLabelMapVolumeNode()
+    slicer.mrmlScene.AddNode(brainWM_thin_Label)
     params = {}
-    params["inputVolume"] = MNIBrainTemplateNode.GetID()
-    params["referenceVolume"] = inputT1Volume.GetID()
-    params["outputVolume"] = MNINativeVolume.GetID()
+    params["inputVolume"] = MNIWM_thin_Label.GetID()
+    params["referenceVolume"] = inputFLAIRVolume.GetID()
+    params["outputVolume"] = brainWM_thin_Label.GetID()
     params["warpTransform"] = registrationMNI2T1Transform.GetID()
     params["inverseTransform"] = False
-    params["interpolationMode"] = "Linear"
-    params["pixelType"] = "float"
+    params["interpolationMode"] = "NearestNeighbor"
+    params["pixelType"] = "binary"
 
     slicer.cli.run(slicer.modules.brainsresample, None, params, wait_for_completion=True)
 
+    brainWMLabel = slicer.vtkMRMLLabelMapVolumeNode()
+    slicer.mrmlScene.AddNode(brainWMLabel)
+    params = {}
+    params["inputVolume"] = MNIWMLabel.GetID()
+    params["referenceVolume"] = inputFLAIRVolume.GetID()
+    params["outputVolume"] = brainWMLabel.GetID()
+    params["warpTransform"] = registrationMNI2T1Transform.GetID()
+    params["inverseTransform"] = False
+    params["interpolationMode"] = "Linear"
+    params["pixelType"] = "binary"
 
+    slicer.cli.run(slicer.modules.brainsresample, None, params, wait_for_completion=True)
+
+    # Creating FLAIR image copy for processing pipeline
+    inputFLAIRVolume_tmp = slicer.vtkMRMLScalarVolumeNode()
+    slicer.mrmlScene.AddNode(inputFLAIRVolume_tmp)
+    # volumesLogic = slicer.modules.volumes.logic()
+    # inputFLAIRVolume_tmp = volumesLogic.CloneVolume(slicer.mrmlScene, inputFLAIRVolume, inputFLAIRVolume.GetName())
     #################################################################################################################
     #                                              Image Processing                                                 #
     #################################################################################################################
     if applyBias:
       #################################################################################################################
-      #                                           T1 Bias Field Correction                                            #
-      #################################################################################################################
-      slicer.util.showStatusMessage("Step 3/...: Bias field correction...")
-
-      inputFLAIRBiasVolume = slicer.vtkMRMLScalarVolumeNode()
-      slicer.mrmlScene.AddNode(inputFLAIRBiasVolume)
-      regParams = {}
-      regParams["inputImageName"] = inputT1Volume.GetID()
-      # regParams["maskImageName"] = MNINativeWMLabel.GetID()
-      regParams["outputImageName"] = inputT1Volume.GetID()
-
-      slicer.cli.run(slicer.modules.n4itkbiasfieldcorrection, None, regParams, wait_for_completion=True)
-
-      #################################################################################################################
       #                                    T2-FLAIR Bias Field Correction                                             #
       #################################################################################################################
       slicer.util.showStatusMessage("Step 3/...: Bias field correction...")
 
-      inputFLAIRBiasVolume = slicer.vtkMRMLScalarVolumeNode()
-      slicer.mrmlScene.AddNode(inputFLAIRBiasVolume)
       regParams = {}
-      regParams["inputImageName"] = inputFLAIR_T1Volume.GetID()
-      # regParams["maskImageName"] = MNINativeWMLabel.GetID()
-      regParams["outputImageName"] = inputFLAIR_T1Volume.GetID()
+      regParams["inputImageName"] = inputFLAIRVolume.GetID()
+      regParams["maskImageName"] = brainWMLabel.GetID()
+      regParams["outputImageName"] = inputFLAIRVolume_tmp.GetID()
 
       slicer.cli.run(slicer.modules.n4itkbiasfieldcorrection, None, regParams, wait_for_completion=True)
     if applyNoiseAttenuation:
-      #################################################################################################################
-      #                                             T1 Noise Attenuation                                              #
-      #################################################################################################################
-      slicer.util.showStatusMessage("Step 5/...: Decreasing image noise level...")
-
-      inputFLAIRBiasSmoothVolume = slicer.vtkMRMLScalarVolumeNode()
-      slicer.mrmlScene.AddNode(inputFLAIRBiasSmoothVolume)
-      regParams = {}
-      regParams["inputVolume"] = inputT1Volume.GetID()
-      regParams["outputVolume"] = inputT1Volume.GetID()
-      regParams["condutance"] = conductance
-      regParams["iterations"] = nIter
-      regParams["q"] = qValue
-
-      slicer.cli.run(slicer.modules.aadimagefilter, None, regParams, wait_for_completion=True)
-
       #################################################################################################################
       #                                       T2-FLAIR Noise Attenuation                                              #
       #################################################################################################################
       slicer.util.showStatusMessage("Step 5/...: Decreasing image noise level...")
 
-      inputFLAIRBiasSmoothVolume = slicer.vtkMRMLScalarVolumeNode()
-      slicer.mrmlScene.AddNode(inputFLAIRBiasSmoothVolume)
       regParams = {}
-      regParams["inputVolume"] = inputFLAIR_T1Volume.GetID()
-      regParams["outputVolume"] = inputFLAIR_T1Volume.GetID()
-      regParams["condutance"] = conductance
+      regParams["inputVolume"] = inputFLAIRVolume_tmp.GetID()
+      regParams["outputVolume"] = inputFLAIRVolume_tmp.GetID()
+      regParams["conductance"] = conductance
       regParams["iterations"] = nIter
       regParams["q"] = qValue
 
       slicer.cli.run(slicer.modules.aadimagefilter, None, regParams, wait_for_completion=True)
 
     #################################################################################################################
-    #                                            Brain tissues estimative                                           #
-    #################################################################################################################
-    brainWMLabel = slicer.vtkMRMLLabelMapVolumeNode()
-    slicer.mrmlScene.AddNode(brainWMLabel)
-    regParams = {}
-    regParams["inputVolume"] = MNINativeVolume.GetID()
-    regParams["outputLabel"] = brainWMLabel.GetID()
-    regParams["imageModality"] = "T1"
-    regParams["oneTissue"] = True
-    regParams["typeTissue"] = "White Matter"
-
-    slicer.cli.run(slicer.modules.basicbraintissues, None, regParams, wait_for_completion=True)
-
-    #################################################################################################################
     #                                            Lesion segmentation                                                #
     #################################################################################################################
+    # TODO Acertar o problema que se nao fizer bias e AAD o inputFLAIRVolume_tmp nao existe...pensar se mantem ou nao a escolha do AAD e bias...
     lesionUpdate = slicer.vtkMRMLScalarVolumeNode()
     slicer.mrmlScene.AddNode(lesionUpdate)
     lUpdate=int(lUpdate)
     for i in range(lUpdate):
       # Enhancing lesion contrast...
       regParams = {}
-      regParams["inputVolume"] = inputFLAIR_T1Volume.GetID()
+      regParams["inputVolume"] = inputFLAIRVolume_tmp.GetID()
       regParams["outputVolume"] = lesionUpdate.GetID()
-      regParams["maskVolume"] = brainWMLabel.GetID()
+      regParams["maskVolume"] = brainWM_thin_Label.GetID()
       regParams["numberOfBins"] = numBins
       regParams["flipObject"] = False
       regParams["thrType"] = thrMethod
@@ -590,10 +567,10 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
 
       # Increasing FLAIR lesions contrast...
       regParams = {}
-      regParams["inputVolume"] = inputFLAIR_T1Volume.GetID()
+      regParams["inputVolume"] = inputFLAIRVolume_tmp.GetID()
       regParams["contrastMap"] = lesionUpdate.GetID()
-      regParams["regionMask"] = brainWMLabel.GetID()
-      regParams["outputVolume"] = inputFLAIR_T1Volume.GetID()
+      regParams["regionMask"] = brainWM_thin_Label.GetID()
+      regParams["outputVolume"] = inputFLAIRVolume_tmp.GetID()
       regParams["weight"] = 0
       regParams["lesionThr"] = lThr
 
@@ -614,13 +591,15 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     slicer.cli.run(slicer.modules.lesionmaprefinement, None, params, wait_for_completion=True)
 
     # Removing unnecessary nodes
-    slicer.mrmlScene.RemoveNode(registrationFLAIR2T1Transform)
-    slicer.mrmlScene.RemoveNode(inputFLAIR_T1Volume)
+    slicer.mrmlScene.RemoveNode(registrationT12FLAIRTransform)
+    slicer.mrmlScene.RemoveNode(inputT1_FLAIRVolume)
     slicer.mrmlScene.RemoveNode(registrationMNI2T1Transform)
-    slicer.mrmlScene.RemoveNode(MNINativeVolume)
     slicer.mrmlScene.RemoveNode(MNITemplateNode)
-    slicer.mrmlScene.RemoveNode(MNIBrainTemplateNode)
+    slicer.mrmlScene.RemoveNode(MNIWM_thin_Label)
+    slicer.mrmlScene.RemoveNode(MNIWMLabel)
+    slicer.mrmlScene.RemoveNode(inputFLAIRVolume_tmp)
     slicer.mrmlScene.RemoveNode(brainWMLabel)
+    slicer.mrmlScene.RemoveNode(brainWM_thin_Label)
     slicer.mrmlScene.RemoveNode(lesionUpdate)
 
     slicer.util.showStatusMessage("Processing completed")

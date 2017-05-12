@@ -29,11 +29,14 @@ if (WIN32)
 file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}\\LSSegmenter-Data\\MNI152_T1_1mm_brain.nii.gz DESTINATION $ENV{USERPROFILE}\\LSSegmenter-Data\\)
 file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}\\LSSegmenter-Data\\MNI152_T1_1mm.nii.gz DESTINATION $ENV{USERPROFILE}\\LSSegmenter-Data\\)
 file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}\\LSSegmenter-Data\\MNI152_T1_WhiteMatter.nii.gz DESTINATION $ENV{USERPROFILE}\\LSSegmenter-Data\\)
+file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}\\LSSegmenter-Data\\MNI152_T1_1mm_WhiteMatter_thinner.nii.gz DESTINATION $ENV{USERPROFILE}\\LSSegmenter-Data\\)
+
 endif (WIN32)
 if (UNIX)
 file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/LSSegmenter-Data/MNI152_T1_1mm_brain.nii.gz DESTINATION $ENV{HOME}/LSSegmenter-Data/)
 file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/LSSegmenter-Data/MNI152_T1_1mm.nii.gz DESTINATION $ENV{HOME}/LSSegmenter-Data/)
 file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/LSSegmenter-Data/MNI152_T1_WhiteMatter.nii.gz DESTINATION $ENV{HOME}/LSSegmenter-Data/)
+file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/LSSegmenter-Data/MNI152_T1_1mm_WhiteMatter_thinner.nii.gz DESTINATION $ENV{HOME}/LSSegmenter-Data/)
 endif (UNIX)
 
 #-----------------------------------------------------------------------------
