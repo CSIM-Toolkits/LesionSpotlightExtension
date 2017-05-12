@@ -35,11 +35,11 @@ class LSContrastEnhancer(ScriptedLoadableModule):
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
     self.parent.title = "LS Contrast Enhancer"
-    self.parent.categories = ["Example"]
+    self.parent.categories = ["Filtering"]
     self.parent.dependencies = []
-    self.parent.contributors = ["John Doe (AnyWare Corp.)"] # replace with "Firstname Lastname (Organization)"
+    self.parent.contributors = ["Antonio Carlos Senra Filho (University of Sao Paulo), Luiz Otavio Murta Junior (University of Sao Paulo)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
-    This Module offer a method to increase hyperintense lesions on T2-FLAIR MRI acquisitions, which is mainly applicable in Multiple Sclerosis lesion detection.
+    This module offer a contrast increasing approach for hyperintense lesions on T2-FLAIR MRI acquisitions, which is mainly applicable in Multiple Sclerosis lesion detection.
     More details about the modules functionalities and how to use it, please check the wiki page: https://www.slicer.org/wiki/Documentation/Nightly/Extensions/LesionSpotlight
     """
     self.parent.acknowledgementText = """
@@ -56,7 +56,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
   """
 
   def setup(self):
-    # ScriptedLoadableModuleWidget.setup(self)
+    ScriptedLoadableModuleWidget.setup(self)
 
     # Instantiate and connect widgets ...
 
@@ -118,7 +118,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     self.setFilteringCondutanceWidget = ctk.ctkSliderWidget()
     self.setFilteringCondutanceWidget.maximum = 50
     self.setFilteringCondutanceWidget.minimum = 1
-    self.setFilteringCondutanceWidget.value = 10
+    self.setFilteringCondutanceWidget.value = 5
     self.setFilteringCondutanceWidget.singleStep = 1
     self.setFilteringCondutanceWidget.setToolTip("Condutance parameter.")
     parametersNoiseAttenuationFormLayout.addRow("Condutance ", self.setFilteringCondutanceWidget)
@@ -139,7 +139,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     #
     self.setFilteringQWidget = ctk.ctkSliderWidget()
     self.setFilteringQWidget.singleStep = 0.1
-    self.setFilteringQWidget.minimum = 0.0
+    self.setFilteringQWidget.minimum = 0.01
     self.setFilteringQWidget.maximum = 2.0
     self.setFilteringQWidget.value = 1.2
     self.setFilteringQWidget.setToolTip("Q value parameter.")
@@ -161,7 +161,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     self.setIsBETWidget = ctk.ctkCheckBox()
     self.setIsBETWidget.setChecked(False)
     self.setIsBETWidget.setToolTip(
-      "Is the input data (T1 and T2-FLAIR) already brain extracted?")
+      "Is the input data already brain extracted?")
     parametersRegistrationFormLayout.addRow("Is brain extracted?",
                                             self.setIsBETWidget)
 
@@ -259,8 +259,8 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     #
     self.setThrehsoldLabelMapWidget = qt.QDoubleSpinBox()
     # self.setThrehsoldLabelMapWidget.setDecimals(4)
-    self.setThrehsoldLabelMapWidget.setMaximum(1)
-    self.setThrehsoldLabelMapWidget.setMinimum(0)
+    self.setThrehsoldLabelMapWidget.setMaximum(0.99)
+    self.setThrehsoldLabelMapWidget.setMinimum(0.05)
     self.setThrehsoldLabelMapWidget.setSingleStep(0.01)
     self.setThrehsoldLabelMapWidget.setValue(0.80)
     self.setThrehsoldLabelMapWidget.setToolTip("Threshold for the lesion label Map.")
@@ -373,27 +373,32 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     else:
       home = expanduser("~")
 
-    if isBET:
-      (read, MNITemplateNode)=slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm_brain.nii.gz',{},True)
+    if platform.system() is "Windows":
+      if isBET:
+        (read, MNITemplateNode) = slicer.util.loadVolume(home + '\\LSSegmenter-Data\\MNI152_T1_1mm_brain.nii.gz', {}, True)
+      else:
+        (read, MNITemplateNode) = slicer.util.loadVolume(home + '\\LSSegmenter-Data\\MNI152_T1_1mm.nii.gz', {}, True)
     else:
-      (read, MNITemplateNode)=slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm.nii.gz',{},True)
+      if isBET:
+        (read, MNITemplateNode) = slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm_brain.nii.gz', {}, True)
+      else:
+        (read, MNITemplateNode) = slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm.nii.gz', {}, True)
 
     #
     # Registering the MNI image to T1 image.
     #
     slicer.util.showStatusMessage("Step 1/6: MNI152 to T1 registration...")
-    registrationMNI2T1Transform = slicer.vtkMRMLBSplineTransformNode()
+    registrationMNI2T1Transform = slicer.vtkMRMLLinearTransformNode()
     slicer.mrmlScene.AddNode(registrationMNI2T1Transform)
     regParams = {}
     regParams["fixedVolume"] = inputVolume.GetID()
     regParams["movingVolume"] = MNITemplateNode.GetID()
     regParams["samplingPercentage"] = sampling
     regParams["splineGridSize"] = '8,8,8'
-    regParams["bsplineTransform"] = registrationMNI2T1Transform.GetID()
+    regParams["linearTransform"] = registrationMNI2T1Transform.GetID()
     regParams["initializeTransformMode"] = initiation
     regParams["useRigid"] = True
     regParams["useAffine"] = True
-    regParams["useBSpline"] = True
     regParams["interpolationMode"] = interpolation
 
     slicer.cli.run(slicer.modules.brainsfit, None, regParams, wait_for_completion=True)
@@ -402,8 +407,10 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     #                                              White Matter Mask                                                #
     #################################################################################################################
     slicer.util.showStatusMessage("Step 2/6: Brain white matter estimation...")
-    # TODO Colocar chamadar de leitura para o windows!
-    (read, MNITWhiteMatterNode)=slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_WhiteMatter.nii.gz',{},True)
+    if platform.system() is "Windows":
+      (read, MNITWhiteMatterNode) = slicer.util.loadLabelVolume(home + '\\LSSegmenter-Data\\MNI152_T1_WhiteMatter.nii.gz', {}, True)
+    else:
+      (read, MNITWhiteMatterNode)=slicer.util.loadLabelVolume(home + '/LSSegmenter-Data/MNI152_T1_WhiteMatter.nii.gz',{},True)
 
     MNINativeWMLabel = slicer.vtkMRMLLabelMapVolumeNode()
     slicer.mrmlScene.AddNode(MNINativeWMLabel)
@@ -425,7 +432,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     regParams = {}
     regParams["inputImageName"] = inputVolume.GetID()
     regParams["maskImageName"] = MNINativeWMLabel.GetID()
-    regParams["outputImageName"] = inputVolume.GetID()
+    regParams["outputImageName"] = outputVolume.GetID()
 
     slicer.cli.run(slicer.modules.n4itkbiasfieldcorrection, None, regParams, wait_for_completion=True)
 
@@ -435,9 +442,9 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     slicer.util.showStatusMessage("Step 4/6: Decreasing image noise level...")
 
     regParams = {}
-    regParams["inputVolume"] = inputVolume.GetID()
-    regParams["outputVolume"] = inputVolume.GetID()
-    regParams["condutance"] = conductance
+    regParams["inputVolume"] = outputVolume.GetID()
+    regParams["outputVolume"] = outputVolume.GetID()
+    regParams["conductance"] = conductance
     regParams["iterations"] = nIter
     regParams["q"] = qValue
 
@@ -450,7 +457,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     inputBiasSmoothLesionEnhancedVolume = slicer.vtkMRMLScalarVolumeNode()
     slicer.mrmlScene.AddNode(inputBiasSmoothLesionEnhancedVolume)
     regParams = {}
-    regParams["inputVolume"] = inputVolume.GetID()
+    regParams["inputVolume"] = outputVolume.GetID()
     regParams["outputVolume"] = inputBiasSmoothLesionEnhancedVolume.GetID()
     regParams["maskVolume"] = MNINativeWMLabel.GetID()
     regParams["numberOfBins"] = numberOfBins
@@ -464,7 +471,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     slicer.util.showStatusMessage("Step 6/6: Increasing input image contrast...")
     regParams = {}
-    regParams["inputVolume"] = inputVolume.GetID()
+    regParams["inputVolume"] = outputVolume.GetID()
     regParams["contrastMap"] = inputBiasSmoothLesionEnhancedVolume.GetID()
     regParams["regionMask"] = MNINativeWMLabel.GetID()
     regParams["outputVolume"] = outputVolume.GetID()
