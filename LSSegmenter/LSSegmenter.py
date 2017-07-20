@@ -36,7 +36,7 @@ class LSSegmenter(ScriptedLoadableModule):
     ScriptedLoadableModule.__init__(self, parent)
     self.parent.title = "LS Segmenter"
     self.parent.categories = ["Segmentation"]
-    self.parent.dependencies = [] #TODO Colocar dependencia AnomalousFilters
+    self.parent.dependencies = []
     self.parent.contributors = ["Antonio Carlos Senra Filho (University of Sao Paulo), Luiz Otavio Murta Junior (University of Sao Paulo)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
     This module offer a voxel-intensity lesion segmentation method based on logistic contrast enhancement and threshold level.
