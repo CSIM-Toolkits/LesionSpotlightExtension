@@ -6,8 +6,10 @@ set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
   )
 
+file(GLOB LSSegmenter_DATASET RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "Resources/LSSegmenter-Data/*.nii.gz")
 set(MODULE_PYTHON_RESOURCES
   Resources/Icons/${MODULE_NAME}.png
+  ${LSSegmenter_DATASET}
   )
 
 #-----------------------------------------------------------------------------
@@ -17,27 +19,6 @@ slicerMacroBuildScriptedModule(
   RESOURCES ${MODULE_PYTHON_RESOURCES}
   WITH_GENERIC_TESTS
   )
-
-if (WIN32)
-file(MAKE_DIRECTORY %userprofile%\\LSSegmenter-Data)
-endif (WIN32)
-if (UNIX)
-file(MAKE_DIRECTORY ~/LSSegmenter-Data)
-endif (UNIX)
-
-if (WIN32)
-file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}\\LSSegmenter-Data\\MNI152_T1_1mm_brain.nii.gz DESTINATION $ENV{USERPROFILE}\\LSSegmenter-Data\\)
-file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}\\LSSegmenter-Data\\MNI152_T1_1mm.nii.gz DESTINATION $ENV{USERPROFILE}\\LSSegmenter-Data\\)
-file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}\\LSSegmenter-Data\\MNI152_T1_WhiteMatter.nii.gz DESTINATION $ENV{USERPROFILE}\\LSSegmenter-Data\\)
-file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}\\LSSegmenter-Data\\MNI152_T1_1mm_WhiteMatter_thinner.nii.gz DESTINATION $ENV{USERPROFILE}\\LSSegmenter-Data\\)
-
-endif (WIN32)
-if (UNIX)
-file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/LSSegmenter-Data/MNI152_T1_1mm_brain.nii.gz DESTINATION $ENV{HOME}/LSSegmenter-Data/)
-file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/LSSegmenter-Data/MNI152_T1_1mm.nii.gz DESTINATION $ENV{HOME}/LSSegmenter-Data/)
-file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/LSSegmenter-Data/MNI152_T1_WhiteMatter.nii.gz DESTINATION $ENV{HOME}/LSSegmenter-Data/)
-file(INSTALL ${CMAKE_CURRENT_SOURCE_DIR}/LSSegmenter-Data/MNI152_T1_1mm_WhiteMatter_thinner.nii.gz DESTINATION $ENV{HOME}/LSSegmenter-Data/)
-endif (UNIX)
 
 #-----------------------------------------------------------------------------
 if(BUILD_TESTING)

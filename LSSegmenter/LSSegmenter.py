@@ -70,20 +70,7 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     # Layout within the dummy collapsible button
     parametersInputFormLayout = qt.QFormLayout(parametersInputCollapsibleButton)
 
-    #
-    # input T1 volume selector
-    #
-    self.inputT1Selector = slicer.qMRMLNodeComboBox()
-    self.inputT1Selector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.inputT1Selector.selectNodeUponCreation = False
-    self.inputT1Selector.addEnabled = False
-    self.inputT1Selector.removeEnabled = True
-    self.inputT1Selector.noneEnabled = False
-    self.inputT1Selector.showHidden = False
-    self.inputT1Selector.showChildNodeTypes = False
-    self.inputT1Selector.setMRMLScene(slicer.mrmlScene)
-    self.inputT1Selector.setToolTip("T1 Volume")
-    parametersInputFormLayout.addRow("T1 Volume ", self.inputT1Selector)
+    # TODO pensar em dar um upgrade no algoritmo...colocar um tratamento de imagem similar ao BET, fazendo um histograma cumulativo e retirar os valores menores que 2% e maiores que 98%...assim retira o sinal outlier da imagem que pode dar problema para estimar a curva sigmoidal...caso estranho no dado MICCAI2016 SATH
 
     #
     # input FLAIR volume selector
@@ -128,24 +115,14 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
                                       self.setIsBETWidget)
 
     #
-    # Apply noise attenuation step
+    # MNI152 space?
     #
-    self.setApplyNoiseAttenuationWidget = ctk.ctkCheckBox()
-    self.setApplyNoiseAttenuationWidget.setChecked(False)
-    self.setApplyNoiseAttenuationWidget.setToolTip(
-      "Apply noise attenuation based on the anisotropic anomalous diffusion algorithm on the input data (T1 and T2-FLAIR).")
-    parametersInputFormLayout.addRow("Apply noise attenuation step",
-                                      self.setApplyNoiseAttenuationWidget)
-
-    #
-    # Apply bias field correction step
-    #
-    self.setApplyBiasFieldnWidget = ctk.ctkCheckBox()
-    self.setApplyBiasFieldnWidget.setChecked(False)
-    self.setApplyBiasFieldnWidget.setToolTip(
-      "Apply bias field correction based on the N4ITK algorithm on the input data (T1 and T2-FLAIR).")
-    parametersInputFormLayout.addRow("Apply bias field correction step",
-                                      self.setApplyBiasFieldnWidget)
+    self.setMNISpaceWidget = ctk.ctkCheckBox()
+    self.setMNISpaceWidget.setChecked(False)
+    self.setMNISpaceWidget.setToolTip(
+      "Is the input data already registered to MNI152 space?")
+    parametersInputFormLayout.addRow("MNI152 space?",
+                                     self.setMNISpaceWidget)
 
     #
     # Apply Button
@@ -156,48 +133,84 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     parametersInputFormLayout.addRow(self.applyButton)
 
     #
-    # Noise Attenuation Parameters Area
+    # Segmentation Parameters Area
     #
-    parametersNoiseAttenuationCollapsibleButton = ctk.ctkCollapsibleButton()
-    parametersNoiseAttenuationCollapsibleButton.text = "Noise Attenuation Parameters"
-    self.layout.addWidget(parametersNoiseAttenuationCollapsibleButton)
+    parametersSegmentationParametersCollapsibleButton = ctk.ctkCollapsibleButton()
+    parametersSegmentationParametersCollapsibleButton.text = "Segmentation Parameters"
+    self.layout.addWidget(parametersSegmentationParametersCollapsibleButton)
 
     # Layout within the dummy collapsible button
-    parametersNoiseAttenuationFormLayout = qt.QFormLayout(parametersNoiseAttenuationCollapsibleButton)
+    parametersSegmentationFormLayout = qt.QFormLayout(parametersSegmentationParametersCollapsibleButton)
 
     #
-    # Filtering Parameters: Condutance
+    # Lesion Threshold
     #
-    self.setFilteringCondutanceWidget = ctk.ctkSliderWidget()
-    self.setFilteringCondutanceWidget.maximum=30
-    self.setFilteringCondutanceWidget.minimum=1
-    self.setFilteringCondutanceWidget.value=5
-    self.setFilteringCondutanceWidget.singleStep = 1
-    self.setFilteringCondutanceWidget.setToolTip("Condutance parameter.")
-    parametersNoiseAttenuationFormLayout.addRow("Condutance ", self.setFilteringCondutanceWidget)
+    self.setLesionThresholdWidget = ctk.ctkSliderWidget()
+    self.setLesionThresholdWidget.singleStep = 0.01
+    self.setLesionThresholdWidget.minimum = 0.05
+    self.setLesionThresholdWidget.maximum = 0.99
+    self.setLesionThresholdWidget.value = 0.95
+    self.setLesionThresholdWidget.setToolTip("Define the lesion threshold used in the probability map, i.e. the percentage of voxels that do not belongs to the MS lesion region."
+                                             " Example: l=0.95 means that only 5% of voxels are actual MS lesions.")
+    parametersSegmentationFormLayout.addRow("Lesion Threshold", self.setLesionThresholdWidget)
 
     #
-    # Filtering Parameters: Number of iterations
+    # White Matter Search Matching
     #
-    self.setFilteringNumberOfIterationWidget = ctk.ctkSliderWidget()
-    self.setFilteringNumberOfIterationWidget.maximum =30
-    self.setFilteringNumberOfIterationWidget.minimum = 1
-    self.setFilteringNumberOfIterationWidget.value=5
-    self.setFilteringNumberOfIterationWidget.singleStep = 1
-    self.setFilteringNumberOfIterationWidget.setToolTip("Number of iterations parameter.")
-    parametersNoiseAttenuationFormLayout.addRow("Number Of Iterations ", self.setFilteringNumberOfIterationWidget)
+    self.setWMMatchWidget = qt.QDoubleSpinBox()
+    self.setWMMatchWidget.setMinimum(0.1)
+    self.setWMMatchWidget.setMaximum(1.0)
+    self.setWMMatchWidget.setSingleStep(0.1)
+    self.setWMMatchWidget.setValue(0.6)
+    self.setWMMatchWidget.setToolTip("Set the local neighborhood searching for label refinement step. This metric defines the percentage of white matter"
+                                     " tissue surrounding the hyperintense lesions. Large values defines a conservative segmentation, i.e. in order to define a true MS lesion"
+                                     "it must be close to certain percentage of white matter area.")
+    parametersSegmentationFormLayout.addRow("White Matter Matching ", self.setWMMatchWidget)
 
     #
-    # Filtering Parameters: Q value
+    # Minimum Lesion Size
     #
-    self.setFilteringQWidget = ctk.ctkSliderWidget()
-    self.setFilteringQWidget.singleStep = 0.1
-    self.setFilteringQWidget.minimum = 0.0
-    self.setFilteringQWidget.maximum = 2.0
-    self.setFilteringQWidget.value = 1.2
-    self.setFilteringQWidget.setToolTip("Q value parameter.")
-    parametersNoiseAttenuationFormLayout.addRow("Q Value ", self.setFilteringQWidget)
+    self.setMinimumLesionWidget = qt.QSpinBox()
+    self.setMinimumLesionWidget.setMinimum(1)
+    self.setMinimumLesionWidget.setMaximum(5000)
+    self.setMinimumLesionWidget.setValue(50)
+    self.setMinimumLesionWidget.setToolTip("Set the minimum lesion size adopted as a true lesion in the final lesion map. Units given in number of voxels.")
+    parametersSegmentationFormLayout.addRow("Minimum Lesion Size ", self.setMinimumLesionWidget)
 
+    #
+    # Lesions Map Iterative Updates
+    #
+    self.setLesionMapUpdatesWidget = ctk.ctkSliderWidget()
+    self.setLesionMapUpdatesWidget.singleStep = 1
+    self.setLesionMapUpdatesWidget.minimum = 1
+    self.setLesionMapUpdatesWidget.maximum = 10
+    self.setLesionMapUpdatesWidget.value = 3
+    self.setLesionMapUpdatesWidget.setToolTip("Set the number of updates that will be applied over the lesion probability map. Usually 4 iterations result "
+                                              "in a reasonbale lesion segmentation, but if the lesions are subtle you may increase this parameter.")
+    parametersSegmentationFormLayout.addRow("Lesion Map Iterative Updates", self.setLesionMapUpdatesWidget)
+
+    #
+    # Threshold Method Area
+    #
+    self.setThresholdLFMethodBooleanWidget = ctk.ctkComboBox()
+    self.setThresholdLFMethodBooleanWidget.addItem("MaximumEntropy")
+    self.setThresholdLFMethodBooleanWidget.addItem("Otsu")
+    self.setThresholdLFMethodBooleanWidget.addItem("Moments")
+    self.setThresholdLFMethodBooleanWidget.setToolTip(
+      "Choose the threhsold method for the lesion enhancement procedure. Options: MaximumEntropy, Otsu, Moments, Intermodes and IsoData")
+    parametersSegmentationFormLayout.addRow("Threshold Method ", self.setThresholdLFMethodBooleanWidget)
+
+    #
+    # Number Of Bins
+    #
+    self.setNumberOfBinsWidget = qt.QSpinBox()
+    self.setNumberOfBinsWidget.setMaximum(256)
+    self.setNumberOfBinsWidget.setMinimum(10)
+    self.setNumberOfBinsWidget.setValue(128)
+    self.setNumberOfBinsWidget.setToolTip("Number Of Bins for the histogram calculation")
+    parametersSegmentationFormLayout.addRow("Number Of Bins ", self.setNumberOfBinsWidget)
+
+    # TODO Colocar a opcao de usar ANTs para coregistro...similar ao que eh feitoc om DTILesionTrack
     #
     # Registration Parameters Area
     #
@@ -243,86 +256,6 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
       "Choose the interpolation method used to register the standard space to input image space. Options: Linear, NearestNeighbor, B-Spline")
     parametersRegistrationFormLayout.addRow("Interpolation ", self.setInterpolationMethodBooleanWidget)
 
-    #
-    # Segmentation Parameters Area
-    #
-    parametersSegmentationParametersCollapsibleButton = ctk.ctkCollapsibleButton()
-    parametersSegmentationParametersCollapsibleButton.text = "Segmentation Parameters"
-    self.layout.addWidget(parametersSegmentationParametersCollapsibleButton)
-
-    # Layout within the dummy collapsible button
-    parametersSegmentationFormLayout = qt.QFormLayout(parametersSegmentationParametersCollapsibleButton)
-
-    #
-    # Lesion Threshold
-    #
-    self.setLesionThresholdWidget = ctk.ctkSliderWidget()
-    self.setLesionThresholdWidget.singleStep = 0.01
-    self.setLesionThresholdWidget.minimum = 0.05
-    self.setLesionThresholdWidget.maximum = 0.99
-    self.setLesionThresholdWidget.value = 0.95
-    self.setLesionThresholdWidget.setToolTip("Define the lesion threshold used in the probability map, i.e. the percentage of voxels that do not belongs to the MS lesion region."
-                                             " Example: l=0.95 means that only 5% of voxels are actual MS lesions.")
-    parametersSegmentationFormLayout.addRow("Lesion Threshold", self.setLesionThresholdWidget)
-
-    #
-    # White Matter Search Matching
-    #
-    self.setWMMatchWidget = qt.QDoubleSpinBox()
-    self.setWMMatchWidget.setMinimum(0.1)
-    self.setWMMatchWidget.setMaximum(1.0)
-    self.setWMMatchWidget.setSingleStep(0.1)
-    self.setWMMatchWidget.setValue(0.6)
-    self.setWMMatchWidget.setToolTip("Set the local neighborhood searching for label refinement step. This metric defines the percentage of white matter"
-                                     " tissue surrounding the hyperintense lesions. Large values defines a conservative segmentation, i.e. in order to define a true MS lesion"
-                                     "it must be close to certain percentage of white matter area.")
-    parametersSegmentationFormLayout.addRow("White Matter Matching ", self.setWMMatchWidget)
-
-    #
-    # Minimum Lesion Size
-    #
-    self.setMinimumLesionWidget = qt.QSpinBox()
-    self.setMinimumLesionWidget.setMinimum(1)
-    self.setMinimumLesionWidget.setMaximum(5000)
-    self.setMinimumLesionWidget.setValue(10)
-    self.setMinimumLesionWidget.setToolTip("Set the minimum lesion size adopted as a true lesion in the final lesion map. Units given in number of voxels.")
-    parametersSegmentationFormLayout.addRow("Minimum Lesion Size ", self.setMinimumLesionWidget)
-
-    #
-    # Lesions Map Iteartive Updates
-    #
-    self.setLesionMapUpdatesWidget = ctk.ctkSliderWidget()
-    self.setLesionMapUpdatesWidget.singleStep = 1
-    self.setLesionMapUpdatesWidget.minimum = 1
-    self.setLesionMapUpdatesWidget.maximum = 10
-    self.setLesionMapUpdatesWidget.value = 4
-    self.setLesionMapUpdatesWidget.setToolTip("Set the number of updates that will be applied over the lesion probability map. Usually 4 iterations result "
-                                              "in a reasonbale lesion segmentation, but if the lesions are subtle you may increase this parameter.")
-    parametersSegmentationFormLayout.addRow("Lesion Map Iterative Updates", self.setLesionMapUpdatesWidget)
-
-    #
-    # Threshold Method Area
-    #
-    self.setThresholdLFMethodBooleanWidget = ctk.ctkComboBox()
-    self.setThresholdLFMethodBooleanWidget.addItem("MaximumEntropy")
-    self.setThresholdLFMethodBooleanWidget.addItem("Otsu")
-    self.setThresholdLFMethodBooleanWidget.addItem("Moments")
-    self.setThresholdLFMethodBooleanWidget.addItem("Intermodes")
-    self.setThresholdLFMethodBooleanWidget.addItem("IsoData")
-    self.setThresholdLFMethodBooleanWidget.setToolTip(
-      "Choose the threhsold method for the lesion enhancement procedure. Options: MaximumEntropy, Otsu, Moments, Intermodes and IsoData")
-    parametersSegmentationFormLayout.addRow("Threshold Method ", self.setThresholdLFMethodBooleanWidget)
-
-    #
-    # Number Of Bins
-    #
-    self.setNumberOfBinsWidget = qt.QSpinBox()
-    self.setNumberOfBinsWidget.setMaximum(256)
-    self.setNumberOfBinsWidget.setMinimum(10)
-    self.setNumberOfBinsWidget.setValue(128)
-    self.setNumberOfBinsWidget.setToolTip("Number Of Bins for the histogram calculation")
-    parametersSegmentationFormLayout.addRow("Number Of Bins ", self.setNumberOfBinsWidget)
-
     # connections
     self.applyButton.connect('clicked(bool)', self.onApplyButton)
     self.inputFLAIRSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
@@ -342,20 +275,15 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
 
   def onApplyButton(self):
     logic = LSSegmenterLogic()
-    logic.run(self.inputT1Selector.currentNode()
-              ,self.inputFLAIRSelector.currentNode()
+    logic.run(self.inputFLAIRSelector.currentNode()
               ,self.outputSelector.currentNode()
               ,self.setIsBETWidget.isChecked()
-              ,self.setApplyNoiseAttenuationWidget.isChecked()
-              ,self.setApplyBiasFieldnWidget.isChecked()
+              ,self.setMNISpaceWidget.isChecked()
               ,self.setPercSamplingQWidget.value
               ,self.setInitiationRegistrationBooleanWidget.currentText
               ,self.setInterpolationMethodBooleanWidget.currentText
               ,self.setWMMatchWidget.value
               ,self.setMinimumLesionWidget.value
-              ,self.setFilteringCondutanceWidget.value
-              ,self.setFilteringNumberOfIterationWidget.value
-              ,self.setFilteringQWidget.value
               ,self.setLesionMapUpdatesWidget.value
               ,self.setThresholdLFMethodBooleanWidget.currentText
               ,self.setNumberOfBinsWidget.value
@@ -404,8 +332,8 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
       return False
     return True
 
-  def run(self, inputT1Volume, inputFLAIRVolume, outputLabel, isBET,applyNoiseAttenuation,applyBias, sampling, initiation, interpolation,
-          wmMatch, minimumSize, conductance, nIter, qValue, lUpdate, thrMethod, numBins, lThr):
+  def run(self, inputFLAIRVolume, outputLabel, isBET, isMNISpace, sampling, initiation, interpolation,
+          wmMatch, minimumSize, lUpdate, thrMethod, numBins, lThr):
     """
     Run the actual algorithm
     """
@@ -417,99 +345,6 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     logging.info('Processing started')
     slicer.util.showStatusMessage("Processing started")
 
-    #################################################################################################################
-    #                                        Registration  - FLAIR to T1                                            #
-    #################################################################################################################
-    slicer.util.showStatusMessage("Step 1/...: T1 to T2-FLAIR registration...")
-    registrationT12FLAIRTransform = slicer.vtkMRMLLinearTransformNode()
-    registrationT12FLAIRTransform.SetName("regT12FLAIR_linear")
-    slicer.mrmlScene.AddNode(registrationT12FLAIRTransform)
-    inputT1_FLAIRVolume = slicer.vtkMRMLScalarVolumeNode()
-    slicer.mrmlScene.AddNode(inputT1_FLAIRVolume)
-    regParams = {}
-    regParams["fixedVolume"] = inputFLAIRVolume.GetID()
-    regParams["movingVolume"] = inputT1Volume.GetID()
-    regParams["samplingPercentage"] = sampling
-    regParams["outputVolume"] = inputT1_FLAIRVolume.GetID()
-    regParams["linearTransform"] = registrationT12FLAIRTransform.GetID()
-    regParams["initializeTransformMode"] = initiation
-    regParams["useRigid"] = True
-    regParams["interpolationMode"] = interpolation
-
-    slicer.cli.run(slicer.modules.brainsfit, None, regParams, wait_for_completion=True)
-
-    #################################################################################################################
-    #                                        Registration  - MNI to T1                                              #
-    #################################################################################################################
-    if platform.system() is "Windows":
-      home = expanduser("%userprofile%")
-    else:
-      home = expanduser("~")
-
-    if platform.system() is "Windows":
-      if isBET:
-        (read, MNITemplateNode) = slicer.util.loadVolume(home + '\\LSSegmenter-Data\\MNI152_T1_1mm_brain.nii.gz', {}, True)
-      else:
-        (read, MNITemplateNode) = slicer.util.loadVolume(home + '\\LSSegmenter-Data\\MNI152_T1_1mm.nii.gz', {}, True)
-    else:
-      if isBET:
-        (read, MNITemplateNode) = slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm_brain.nii.gz', {}, True)
-      else:
-        (read, MNITemplateNode) = slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm.nii.gz', {}, True)
-
-    #
-    # Registering the MNI template to T1 image.
-    #
-    slicer.util.showStatusMessage("Step 1/...: MNI152 to T1 registration...")
-    registrationMNI2T1Transform = slicer.vtkMRMLLinearTransformNode()
-    registrationMNI2T1Transform.SetName("regMNI2T1_linear")
-    slicer.mrmlScene.AddNode(registrationMNI2T1Transform)
-
-    regParams = {}
-    regParams["fixedVolume"] = inputT1_FLAIRVolume.GetID()
-    regParams["movingVolume"] = MNITemplateNode.GetID()
-    regParams["samplingPercentage"] = sampling
-    regParams["splineGridSize"] = '8,8,8'
-    regParams["linearTransform"] = registrationMNI2T1Transform.GetID()
-    regParams["initializeTransformMode"] = initiation
-    regParams["useRigid"] = True
-    regParams["useAffine"] = True
-    regParams["interpolationMode"] = interpolation
-
-    slicer.cli.run(slicer.modules.brainsfit, None, regParams, wait_for_completion=True)
-
-    if platform.system() is "Windows":
-      (read, MNIWM_thin_Label) = slicer.util.loadLabelVolume(home + '\\LSSegmenter-Data\\MNI152_T1_1mm_WhiteMatter_thinner.nii.gz', {}, True)
-      (read, MNIWMLabel) = slicer.util.loadLabelVolume(home + '\\LSSegmenter-Data\\MNI152_T1_WhiteMatter.nii.gz', {}, True)
-    else:
-      (read, MNIWM_thin_Label) = slicer.util.loadLabelVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm_WhiteMatter_thinner.nii.gz', {}, True)
-      (read, MNIWMLabel) = slicer.util.loadLabelVolume(home + '/LSSegmenter-Data/MNI152_T1_WhiteMatter.nii.gz', {}, True)
-
-    brainWM_thin_Label = slicer.vtkMRMLLabelMapVolumeNode()
-    slicer.mrmlScene.AddNode(brainWM_thin_Label)
-    params = {}
-    params["inputVolume"] = MNIWM_thin_Label.GetID()
-    params["referenceVolume"] = inputFLAIRVolume.GetID()
-    params["outputVolume"] = brainWM_thin_Label.GetID()
-    params["warpTransform"] = registrationMNI2T1Transform.GetID()
-    params["inverseTransform"] = False
-    params["interpolationMode"] = "NearestNeighbor"
-    params["pixelType"] = "binary"
-
-    slicer.cli.run(slicer.modules.brainsresample, None, params, wait_for_completion=True)
-
-    brainWMLabel = slicer.vtkMRMLLabelMapVolumeNode()
-    slicer.mrmlScene.AddNode(brainWMLabel)
-    params = {}
-    params["inputVolume"] = MNIWMLabel.GetID()
-    params["referenceVolume"] = inputFLAIRVolume.GetID()
-    params["outputVolume"] = brainWMLabel.GetID()
-    params["warpTransform"] = registrationMNI2T1Transform.GetID()
-    params["inverseTransform"] = False
-    params["interpolationMode"] = "Linear"
-    params["pixelType"] = "binary"
-
-    slicer.cli.run(slicer.modules.brainsresample, None, params, wait_for_completion=True)
 
     # Creating FLAIR image copy for processing pipeline
     inputFLAIRVolume_tmp = slicer.vtkMRMLScalarVolumeNode()
@@ -519,93 +354,229 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                              Image Processing                                                 #
     #################################################################################################################
-    if applyBias:
-      #################################################################################################################
-      #                                    T2-FLAIR Bias Field Correction                                             #
-      #################################################################################################################
-      slicer.util.showStatusMessage("Step 3/...: Bias field correction...")
+    #################################################################################################################
+    #                                    T2-FLAIR Bias Field Correction                                             #
+    #################################################################################################################
+    slicer.util.showStatusMessage("Step 3/...: Bias field correction...")
 
-      regParams = {}
-      regParams["inputImageName"] = inputFLAIRVolume.GetID()
-      regParams["maskImageName"] = brainWMLabel.GetID()
-      regParams["outputImageName"] = inputFLAIRVolume_tmp.GetID()
+    regParams = {}
+    regParams["inputImageName"] = inputFLAIRVolume.GetID()
+    regParams["outputImageName"] = inputFLAIRVolume_tmp.GetID()
 
-      slicer.cli.run(slicer.modules.n4itkbiasfieldcorrection, None, regParams, wait_for_completion=True)
-    if applyNoiseAttenuation:
-      #################################################################################################################
-      #                                       T2-FLAIR Noise Attenuation                                              #
-      #################################################################################################################
-      slicer.util.showStatusMessage("Step 5/...: Decreasing image noise level...")
-
-      regParams = {}
-      regParams["inputVolume"] = inputFLAIRVolume_tmp.GetID()
-      regParams["outputVolume"] = inputFLAIRVolume_tmp.GetID()
-      regParams["conductance"] = conductance
-      regParams["iterations"] = nIter
-      regParams["q"] = qValue
-
-      slicer.cli.run(slicer.modules.aadimagefilter, None, regParams, wait_for_completion=True)
+    slicer.cli.run(slicer.modules.n4itkbiasfieldcorrection, None, regParams, wait_for_completion=True)
 
     #################################################################################################################
-    #                                            Lesion segmentation                                                #
+    #                                       T2-FLAIR Noise Attenuation                                              #
     #################################################################################################################
-    # TODO Acertar o problema que se nao fizer bias e AAD o inputFLAIRVolume_tmp nao existe...pensar se mantem ou nao a escolha do AAD e bias...
-    lesionUpdate = slicer.vtkMRMLScalarVolumeNode()
-    slicer.mrmlScene.AddNode(lesionUpdate)
-    lUpdate=int(lUpdate)
-    for i in range(lUpdate):
-      # Enhancing lesion contrast...
+    slicer.util.showStatusMessage("Step 5/...: Decreasing image noise level...")
+
+    regParams = {}
+    regParams["inputVolume"] = inputFLAIRVolume_tmp.GetID()
+    regParams["outputVolume"] = inputFLAIRVolume_tmp.GetID()
+    regParams["conductance"] = 10.0
+    regParams["useAutoConductance"] = False
+    regParams["optFunction"] = "Morphological"
+    regParams["iterations"] = 5
+    regParams["q"] = 1.25
+
+    slicer.cli.run(slicer.modules.aadimagefilter, None, regParams, wait_for_completion=True)
+
+    # Get the path to LSSegmenter-Data files
+    path2files = os.path.dirname(slicer.modules.lssegmenter.path)
+    if not isMNISpace:
+      #################################################################################################################
+      #                                        Registration  - MNI to Native space                                    #
+      #################################################################################################################
+      # if platform.system() is "Windows":
+      #   home = expanduser("%userprofile%")
+      # else:
+      #   home = expanduser("~")
+
+      if platform.system() is "Windows":
+        if isBET:
+          (read, MNITemplateNode) = slicer.util.loadVolume(path2files + '\\Resources\\LSSegmenter-Data\\MNI152_T1_1mm_brain.nii.gz',
+                                                           {}, True)
+        else:
+          (read, MNITemplateNode) = slicer.util.loadVolume(path2files + '\\Resources\\LSSegmenter-Data\\MNI152_T1_1mm.nii.gz', {},
+                                                           True)
+      else:
+        if isBET:
+          (read, MNITemplateNode) = slicer.util.loadVolume(path2files + '/Resources/LSSegmenter-Data/MNI152_T1_1mm_brain.nii.gz', {},
+                                                           True)
+        else:
+          (read, MNITemplateNode) = slicer.util.loadVolume(path2files + '/Resources/LSSegmenter-Data/MNI152_T1_1mm.nii.gz', {}, True)
+
+      #
+      # Registering the MNI template to native space.
+      #
+      slicer.util.showStatusMessage("Step 1/...: MNI152 to native space registration...")
+      registrationMNI2NativeTransform = slicer.vtkMRMLLinearTransformNode()
+      registrationMNI2NativeTransform.SetName("regMNI2Native_linear")
+      slicer.mrmlScene.AddNode(registrationMNI2T1Transform)
+
       regParams = {}
-      regParams["inputVolume"] = inputFLAIRVolume_tmp.GetID()
-      regParams["outputVolume"] = lesionUpdate.GetID()
-      regParams["maskVolume"] = brainWM_thin_Label.GetID()
-      regParams["numberOfBins"] = numBins
-      regParams["flipObject"] = False
-      regParams["thrType"] = thrMethod
+      regParams["fixedVolume"] = inputFLAIRVolume_tmp.GetID()
+      regParams["movingVolume"] = MNITemplateNode.GetID()
+      regParams["samplingPercentage"] = sampling
+      regParams["splineGridSize"] = '8,8,8'
+      regParams["linearTransform"] = registrationMNI2NativeTransform.GetID()
+      regParams["initializeTransformMode"] = initiation
+      regParams["useRigid"] = True
+      regParams["useAffine"] = True
+      regParams["interpolationMode"] = interpolation
 
-      slicer.cli.run(slicer.modules.logisticcontrastenhancement, None, regParams, wait_for_completion=True)
+      slicer.cli.run(slicer.modules.brainsfit, None, regParams, wait_for_completion=True)
 
-      # Increasing FLAIR lesions contrast...
-      regParams = {}
-      regParams["inputVolume"] = inputFLAIRVolume_tmp.GetID()
-      regParams["contrastMap"] = lesionUpdate.GetID()
-      regParams["regionMask"] = brainWM_thin_Label.GetID()
-      regParams["outputVolume"] = inputFLAIRVolume_tmp.GetID()
-      regParams["weight"] = 0
-      regParams["lesionThr"] = lThr
+      if platform.system() is "Windows":
+        (read, MNIWM_thin_Label) = slicer.util.loadLabelVolume(path2files + '\\Resources\\LSSegmenter-Data\\MNI152_T1_1mm_WhiteMatter_thinner.nii.gz', {}, True)
+        (read, MNIWMLabel) = slicer.util.loadLabelVolume(path2files + '\\Resources\\LSSegmenter-Data\\MNI152_T1_WhiteMatter.nii.gz', {}, True)
+      else:
+        (read, MNIWM_thin_Label) = slicer.util.loadLabelVolume(path2files + '/Resources/LSSegmenter-Data/MNI152_T1_1mm_WhiteMatter_thinner.nii.gz', {}, True)
+        (read, MNIWMLabel) = slicer.util.loadLabelVolume(path2files + '/Resources/LSSegmenter-Data/MNI152_T1_WhiteMatter.nii.gz', {}, True)
 
-      slicer.cli.run(slicer.modules.weightedenhancementimagefilter, None, regParams, wait_for_completion=True)
+      brainWM_thin_Label = slicer.vtkMRMLLabelMapVolumeNode()
+      slicer.mrmlScene.AddNode(brainWM_thin_Label)
+      params = {}
+      params["inputVolume"] = MNIWM_thin_Label.GetID()
+      params["referenceVolume"] = inputFLAIRVolume.GetID()
+      params["outputVolume"] = brainWM_thin_Label.GetID()
+      params["warpTransform"] = registrationMNI2NativeTransform.GetID()
+      params["inverseTransform"] = False
+      params["interpolationMode"] = "NearestNeighbor"
+      params["pixelType"] = "binary"
 
+      slicer.cli.run(slicer.modules.brainsresample, None, params, wait_for_completion=True)
 
-    #
-    # Lesion Map Refinement
-    #
-    params= {}
-    params["lesionProbMap"]= lesionUpdate.GetID()
-    params["wmMask"] = brainWMLabel.GetID()
-    params["outputLesionMap"] = outputLabel.GetID()
-    params["lesionThr"] = (1-lThr)
-    params["wmMatch"] = wmMatch
-    params["minimumSize"] = minimumSize
+      brainWMLabel = slicer.vtkMRMLLabelMapVolumeNode()
+      slicer.mrmlScene.AddNode(brainWMLabel)
+      params = {}
+      params["inputVolume"] = MNIWMLabel.GetID()
+      params["referenceVolume"] = inputFLAIRVolume_tmp.GetID()
+      params["outputVolume"] = brainWMLabel.GetID()
+      params["warpTransform"] = registrationMNI2NativeTransform.GetID()
+      params["inverseTransform"] = False
+      params["interpolationMode"] = "Linear"
+      params["pixelType"] = "binary"
 
-    slicer.cli.run(slicer.modules.lesionmaprefinement, None, params, wait_for_completion=True)
+      slicer.cli.run(slicer.modules.brainsresample, None, params, wait_for_completion=True)
 
-    # Removing unnecessary nodes
-    slicer.mrmlScene.RemoveNode(registrationT12FLAIRTransform)
-    slicer.mrmlScene.RemoveNode(inputT1_FLAIRVolume)
-    slicer.mrmlScene.RemoveNode(registrationMNI2T1Transform)
-    slicer.mrmlScene.RemoveNode(MNITemplateNode)
-    slicer.mrmlScene.RemoveNode(MNIWM_thin_Label)
-    slicer.mrmlScene.RemoveNode(MNIWMLabel)
-    slicer.mrmlScene.RemoveNode(inputFLAIRVolume_tmp)
-    slicer.mrmlScene.RemoveNode(brainWMLabel)
-    slicer.mrmlScene.RemoveNode(brainWM_thin_Label)
-    slicer.mrmlScene.RemoveNode(lesionUpdate)
+      #################################################################################################################
+      #                                            Lesion segmentation                                                #
+      #################################################################################################################
+      lesionUpdate = slicer.vtkMRMLScalarVolumeNode()
+      slicer.mrmlScene.AddNode(lesionUpdate)
+      lUpdate = int(lUpdate)
+      for i in range(lUpdate):
+        # Enhancing lesion contrast...
+        regParams = {}
+        regParams["inputVolume"] = inputFLAIRVolume_tmp.GetID()
+        regParams["outputVolume"] = lesionUpdate.GetID()
+        regParams["maskVolume"] = brainWM_thin_Label.GetID()
+        regParams["numberOfBins"] = numBins
+        regParams["flipObject"] = False
+        regParams["thrType"] = thrMethod
 
-    slicer.util.showStatusMessage("Processing completed")
-    logging.info('Processing completed')
+        slicer.cli.run(slicer.modules.logisticcontrastenhancement, None, regParams, wait_for_completion=True)
 
-    return True
+        # Increasing FLAIR lesions contrast...
+        regParams = {}
+        regParams["inputVolume"] = inputFLAIRVolume_tmp.GetID()
+        regParams["contrastMap"] = lesionUpdate.GetID()
+        regParams["regionMask"] = brainWM_thin_Label.GetID()
+        regParams["outputVolume"] = inputFLAIRVolume_tmp.GetID()
+        regParams["weight"] = 0
+        regParams["lesionThr"] = lThr
+
+        slicer.cli.run(slicer.modules.weightedenhancementimagefilter, None, regParams, wait_for_completion=True)
+
+      #
+      # Lesion Map Refinement
+      #
+      params = {}
+      params["lesionProbMap"] = lesionUpdate.GetID()
+      params["wmMask"] = brainWMLabel.GetID()
+      params["outputLesionMap"] = outputLabel.GetID()
+      params["lesionThr"] = (1 - lThr)
+      params["wmMatch"] = wmMatch
+      params["minimumSize"] = minimumSize
+
+      slicer.cli.run(slicer.modules.lesionmaprefinement, None, params, wait_for_completion=True)
+
+      # Removing unnecessary nodes
+      slicer.mrmlScene.RemoveNode(registrationT12FLAIRTransform)
+      slicer.mrmlScene.RemoveNode(inputT1_FLAIRVolume)
+      slicer.mrmlScene.RemoveNode(registrationMNI2T1Transform)
+      slicer.mrmlScene.RemoveNode(MNITemplateNode)
+      slicer.mrmlScene.RemoveNode(MNIWM_thin_Label)
+      slicer.mrmlScene.RemoveNode(MNIWMLabel)
+      slicer.mrmlScene.RemoveNode(inputFLAIRVolume_tmp)
+      slicer.mrmlScene.RemoveNode(brainWMLabel)
+      slicer.mrmlScene.RemoveNode(brainWM_thin_Label)
+      slicer.mrmlScene.RemoveNode(lesionUpdate)
+
+      slicer.util.showStatusMessage("Processing completed")
+      logging.info('Processing completed')
+
+      return True
+    else:
+      #################################################################################################################
+      #                                            Lesion segmentation                                                #
+      #################################################################################################################
+
+      if platform.system() is "Windows":
+        (read, MNIWM_thin_Label) = slicer.util.loadLabelVolume(path2files + '\\Resources\\LSSegmenter-Data\\MNI152_T1_1mm_WhiteMatter_thinner.nii.gz', {}, True)
+        (read, MNIWMLabel) = slicer.util.loadLabelVolume(path2files + '\\Resources\\LSSegmenter-Data\\MNI152_T1_WhiteMatter.nii.gz', {}, True)
+      else:
+        (read, MNIWM_thin_Label) = slicer.util.loadLabelVolume(path2files + '/Resources/LSSegmenter-Data/MNI152_T1_1mm_WhiteMatter_thinner.nii.gz', {}, True)
+        (read, MNIWMLabel) = slicer.util.loadLabelVolume(path2files + '/Resources/LSSegmenter-Data/MNI152_T1_WhiteMatter.nii.gz', {}, True)
+
+      lesionUpdate = slicer.vtkMRMLScalarVolumeNode()
+      slicer.mrmlScene.AddNode(lesionUpdate)
+      lUpdate = int(lUpdate)
+      for i in range(lUpdate):
+        # Enhancing lesion contrast...
+        regParams = {}
+        regParams["inputVolume"] = inputFLAIRVolume_tmp.GetID()
+        regParams["outputVolume"] = lesionUpdate.GetID()
+        regParams["maskVolume"] = MNIWM_thin_Label.GetID()
+        regParams["numberOfBins"] = numBins
+        regParams["flipObject"] = False
+        regParams["thrType"] = thrMethod
+
+        slicer.cli.run(slicer.modules.logisticcontrastenhancement, None, regParams, wait_for_completion=True)
+
+        # Increasing FLAIR lesions contrast...
+        regParams = {}
+        regParams["inputVolume"] = inputFLAIRVolume_tmp.GetID()
+        regParams["contrastMap"] = lesionUpdate.GetID()
+        regParams["regionMask"] = MNIWM_thin_Label.GetID()
+        regParams["outputVolume"] = inputFLAIRVolume_tmp.GetID()
+        regParams["weight"] = 0
+        regParams["lesionThr"] = lThr
+
+        slicer.cli.run(slicer.modules.weightedenhancementimagefilter, None, regParams, wait_for_completion=True)
+
+      #
+      # Lesion Map Refinement
+      #
+      params = {}
+      params["lesionProbMap"] = lesionUpdate.GetID()
+      params["wmMask"] = MNIWMLabel.GetID()
+      params["outputLesionMap"] = outputLabel.GetID()
+      params["lesionThr"] = (1 - lThr)
+      params["wmMatch"] = wmMatch
+      params["minimumSize"] = minimumSize
+
+      slicer.cli.run(slicer.modules.lesionmaprefinement, None, params, wait_for_completion=True)
+
+      # Removing unnecessary nodes
+      slicer.mrmlScene.RemoveNode(lesionUpdate)
+      slicer.mrmlScene.RemoveNode(MNIWMLabel)
+      slicer.mrmlScene.RemoveNode(MNIWM_thin_Label)
+      slicer.mrmlScene.RemoveNode(inputFLAIRVolume_tmp)
+
+      return True
+
 
 
 
