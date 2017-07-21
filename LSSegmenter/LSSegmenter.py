@@ -357,7 +357,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                    T2-FLAIR Bias Field Correction                                             #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 3/...: Bias field correction...")
+    slicer.util.showStatusMessage("Step 1: Bias field correction...")
 
     regParams = {}
     regParams["inputImageName"] = inputFLAIRVolume.GetID()
@@ -368,7 +368,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                       T2-FLAIR Noise Attenuation                                              #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 5/...: Decreasing image noise level...")
+    slicer.util.showStatusMessage("Step 2: Decreasing image noise level...")
 
     regParams = {}
     regParams["inputVolume"] = inputFLAIRVolume_tmp.GetID()
@@ -387,11 +387,6 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
       #################################################################################################################
       #                                        Registration  - MNI to Native space                                    #
       #################################################################################################################
-      # if platform.system() is "Windows":
-      #   home = expanduser("%userprofile%")
-      # else:
-      #   home = expanduser("~")
-
       if platform.system() is "Windows":
         if isBET:
           (read, MNITemplateNode) = slicer.util.loadVolume(path2files + '\\Resources\\LSSegmenter-Data\\MNI152_T1_1mm_brain.nii.gz',
@@ -409,7 +404,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
       #
       # Registering the MNI template to native space.
       #
-      slicer.util.showStatusMessage("Step 1/...: MNI152 to native space registration...")
+      slicer.util.showStatusMessage("Step 3: MNI152 to native space registration...")
       registrationMNI2NativeTransform = slicer.vtkMRMLLinearTransformNode()
       registrationMNI2NativeTransform.SetName("regMNI2Native_linear")
       slicer.mrmlScene.AddNode(registrationMNI2T1Transform)
@@ -463,6 +458,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
       #################################################################################################################
       #                                            Lesion segmentation                                                #
       #################################################################################################################
+      slicer.util.showStatusMessage("Step 4: Segmenting hyperintenses lesions...")
       lesionUpdate = slicer.vtkMRMLScalarVolumeNode()
       slicer.mrmlScene.AddNode(lesionUpdate)
       lUpdate = int(lUpdate)
@@ -503,9 +499,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
       slicer.cli.run(slicer.modules.lesionmaprefinement, None, params, wait_for_completion=True)
 
       # Removing unnecessary nodes
-      slicer.mrmlScene.RemoveNode(registrationT12FLAIRTransform)
-      slicer.mrmlScene.RemoveNode(inputT1_FLAIRVolume)
-      slicer.mrmlScene.RemoveNode(registrationMNI2T1Transform)
+      slicer.mrmlScene.RemoveNode(registrationMNI2NativeTransform)
       slicer.mrmlScene.RemoveNode(MNITemplateNode)
       slicer.mrmlScene.RemoveNode(MNIWM_thin_Label)
       slicer.mrmlScene.RemoveNode(MNIWMLabel)
@@ -522,7 +516,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
       #################################################################################################################
       #                                            Lesion segmentation                                                #
       #################################################################################################################
-
+      slicer.util.showStatusMessage("Step 3: Segmenting hyperintenses lesions...")
       if platform.system() is "Windows":
         (read, MNIWM_thin_Label) = slicer.util.loadLabelVolume(path2files + '\\Resources\\LSSegmenter-Data\\MNI152_T1_1mm_WhiteMatter_thinner.nii.gz', {}, True)
         (read, MNIWMLabel) = slicer.util.loadLabelVolume(path2files + '\\Resources\\LSSegmenter-Data\\MNI152_T1_WhiteMatter.nii.gz', {}, True)

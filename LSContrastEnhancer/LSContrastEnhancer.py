@@ -82,7 +82,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     self.inputSelector.showHidden = False
     self.inputSelector.showChildNodeTypes = False
     self.inputSelector.setMRMLScene(slicer.mrmlScene)
-    self.inputSelector.setToolTip("Input Volume")
+    self.inputSelector.setToolTip("Input Volume.")
     parametersInputFormLayout.addRow("Input Volume ", self.inputSelector)
 
     #
@@ -101,6 +101,16 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     self.outputSelector.setToolTip(
       "Output enhanced volume.")
     parametersInputFormLayout.addRow("Output Volume ", self.outputSelector)
+
+    #
+    # Is brain extracted?
+    #
+    self.setIsBETWidget = ctk.ctkCheckBox()
+    self.setIsBETWidget.setChecked(False)
+    self.setIsBETWidget.setToolTip(
+      "Is the input data already brain extracted? This is information is useful when choosing the brain template that will be adjusted to the native space.")
+    parametersInputFormLayout.addRow("Is brain extracted?",
+                                            self.setIsBETWidget)
 
     #
     # Noise Attenuation Parameters Area
@@ -155,15 +165,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     # Layout within the dummy collapsible button
     parametersRegistrationFormLayout = qt.QFormLayout(parametersRegistrationCollapsibleButton)
 
-    #
-    # Is brain extracted?
-    #
-    self.setIsBETWidget = ctk.ctkCheckBox()
-    self.setIsBETWidget.setChecked(False)
-    self.setIsBETWidget.setToolTip(
-      "Is the input data already brain extracted?")
-    parametersRegistrationFormLayout.addRow("Is brain extracted?",
-                                            self.setIsBETWidget)
+
 
     #
     # Percentage Sampling Area
@@ -197,7 +199,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     self.setInterpolationMethodBooleanWidget.addItem("BSpline")
     self.setInterpolationMethodBooleanWidget.addItem("NearestNeighbor")
     self.setInterpolationMethodBooleanWidget.setToolTip(
-      "Choose the interpolation method used to register the standard space to input image space. Options: Linear, NearestNeighbor, B-Spline")
+      "Choose the interpolation method used to register the standard space to the native space. Options: Linear, NearestNeighbor, B-Spline")
     parametersRegistrationFormLayout.addRow("Interpolation ", self.setInterpolationMethodBooleanWidget)
 
     #
@@ -250,7 +252,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     self.setFlipObjectWidget = ctk.ctkCheckBox()
     self.setFlipObjectWidget.setChecked(False)
     self.setFlipObjectWidget.setToolTip(
-      "Flip object in the image. This inform if the dark part of the histogram that should be enhanced.")
+      "Flip object in the image. This informs if the dark part of the histogram that should be enhanced.")
     parametersLesionEnhancementFormLayout.addRow("Flip Object",
                                                  self.setFlipObjectWidget)
 
@@ -365,73 +367,17 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     logging.info('Processing started')
     slicer.util.showStatusMessage("Processing started")
 
-    #################################################################################################################
-    #                                        Registration  - MNI to T1                                              #
-    #################################################################################################################
-    if platform.system() is "Windows":
-      home = expanduser("%userprofile%")
-    else:
-      home = expanduser("~")
-
-    if platform.system() is "Windows":
-      if isBET:
-        (read, MNITemplateNode) = slicer.util.loadVolume(home + '\\LSSegmenter-Data\\MNI152_T1_1mm_brain.nii.gz', {}, True)
-      else:
-        (read, MNITemplateNode) = slicer.util.loadVolume(home + '\\LSSegmenter-Data\\MNI152_T1_1mm.nii.gz', {}, True)
-    else:
-      if isBET:
-        (read, MNITemplateNode) = slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm_brain.nii.gz', {}, True)
-      else:
-        (read, MNITemplateNode) = slicer.util.loadVolume(home + '/LSSegmenter-Data/MNI152_T1_1mm.nii.gz', {}, True)
-
-    #
-    # Registering the MNI image to T1 image.
-    #
-    slicer.util.showStatusMessage("Step 1/6: MNI152 to T1 registration...")
-    registrationMNI2T1Transform = slicer.vtkMRMLLinearTransformNode()
-    slicer.mrmlScene.AddNode(registrationMNI2T1Transform)
-    regParams = {}
-    regParams["fixedVolume"] = inputVolume.GetID()
-    regParams["movingVolume"] = MNITemplateNode.GetID()
-    regParams["samplingPercentage"] = sampling
-    regParams["splineGridSize"] = '8,8,8'
-    regParams["linearTransform"] = registrationMNI2T1Transform.GetID()
-    regParams["initializeTransformMode"] = initiation
-    regParams["useRigid"] = True
-    regParams["useAffine"] = True
-    regParams["interpolationMode"] = interpolation
-
-    slicer.cli.run(slicer.modules.brainsfit, None, regParams, wait_for_completion=True)
 
     #################################################################################################################
-    #                                              White Matter Mask                                                #
+    #                                              Image Processing                                                 #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 2/6: Brain white matter estimation...")
-    if platform.system() is "Windows":
-      (read, MNITWhiteMatterNode) = slicer.util.loadLabelVolume(home + '\\LSSegmenter-Data\\MNI152_T1_WhiteMatter.nii.gz', {}, True)
-    else:
-      (read, MNITWhiteMatterNode)=slicer.util.loadLabelVolume(home + '/LSSegmenter-Data/MNI152_T1_WhiteMatter.nii.gz',{},True)
-
-    MNINativeWMLabel = slicer.vtkMRMLLabelMapVolumeNode()
-    slicer.mrmlScene.AddNode(MNINativeWMLabel)
-    regParams = {}
-    regParams["inputVolume"] = MNITWhiteMatterNode.GetID()
-    regParams["referenceVolume"] = inputVolume.GetID()
-    regParams["pixelType"] = "binary"
-    regParams["outputVolume"] = MNINativeWMLabel.GetID()
-    regParams["warpTransform"] = registrationMNI2T1Transform.GetID()
-    regParams["interpolationMode"] = "NearestNeighbor"
-
-    slicer.cli.run(slicer.modules.brainsresample, None, regParams, wait_for_completion=True)
-
     #################################################################################################################
     #                                             Bias Field Correction                                             #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 3/6: Bias field correction...")
+    slicer.util.showStatusMessage("Step 1: Bias field correction...")
 
     regParams = {}
     regParams["inputImageName"] = inputVolume.GetID()
-    regParams["maskImageName"] = MNINativeWMLabel.GetID()
     regParams["outputImageName"] = outputVolume.GetID()
 
     slicer.cli.run(slicer.modules.n4itkbiasfieldcorrection, None, regParams, wait_for_completion=True)
@@ -439,7 +385,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                              Noise Attenuation                                                #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 4/6: Decreasing image noise level...")
+    slicer.util.showStatusMessage("Step 2: Decreasing image noise level...")
 
     regParams = {}
     regParams["inputVolume"] = outputVolume.GetID()
@@ -450,30 +396,87 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
 
     slicer.cli.run(slicer.modules.aadimagefilter, None, regParams, wait_for_completion=True)
 
+    # Get the path to LSSegmenter-Data files
+    path2files = os.path.dirname(slicer.modules.lssegmenter.path)
     #################################################################################################################
-    #                                              Lesion Enhancement                                               #
+    #                                        Registration  - MNI to Native space                                    #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 5/6: Enhancing lesion contrast...")
-    inputBiasSmoothLesionEnhancedVolume = slicer.vtkMRMLScalarVolumeNode()
-    slicer.mrmlScene.AddNode(inputBiasSmoothLesionEnhancedVolume)
+    if platform.system() is "Windows":
+      if isBET:
+        (read, MNITemplateNode) = slicer.util.loadVolume(path2files + '\\Resources\\LSSegmenter-Data\\MNI152_T1_1mm_brain.nii.gz',
+                                                         {}, True)
+      else:
+        (read, MNITemplateNode) = slicer.util.loadVolume(path2files + '\\Resources\\LSSegmenter-Data\\MNI152_T1_1mm.nii.gz', {},
+                                                         True)
+    else:
+      if isBET:
+        (read, MNITemplateNode) = slicer.util.loadVolume(path2files + '/Resources/LSSegmenter-Data/MNI152_T1_1mm_brain.nii.gz', {},
+                                                         True)
+      else:
+        (read, MNITemplateNode) = slicer.util.loadVolume(path2files + '/Resources/LSSegmenter-Data/MNI152_T1_1mm.nii.gz', {}, True)
+
+    #
+    # Registering the MNI template to native space.
+    #
+    slicer.util.showStatusMessage("Step 3: MNI152 to native space registration...")
+    registrationMNI2NativeTransform = slicer.vtkMRMLLinearTransformNode()
+    registrationMNI2NativeTransform.SetName("regMNI2Native_linear")
+    slicer.mrmlScene.AddNode(registrationMNI2NativeTransform)
+
+    regParams = {}
+    regParams["fixedVolume"] = outputVolume.GetID()
+    regParams["movingVolume"] = MNITemplateNode.GetID()
+    regParams["samplingPercentage"] = sampling
+    regParams["splineGridSize"] = '8,8,8'
+    regParams["linearTransform"] = registrationMNI2NativeTransform.GetID()
+    regParams["initializeTransformMode"] = initiation
+    regParams["useRigid"] = True
+    regParams["useAffine"] = True
+    regParams["interpolationMode"] = interpolation
+
+    slicer.cli.run(slicer.modules.brainsfit, None, regParams, wait_for_completion=True)
+
+    if platform.system() is "Windows":
+      (read, MNIWM_thin_Label) = slicer.util.loadLabelVolume(path2files + '\\Resources\\LSSegmenter-Data\\MNI152_T1_1mm_WhiteMatter_thinner.nii.gz', {}, True)
+    else:
+      (read, MNIWM_thin_Label) = slicer.util.loadLabelVolume(path2files + '/Resources/LSSegmenter-Data/MNI152_T1_1mm_WhiteMatter_thinner.nii.gz', {}, True)
+
+    brainWM_thin_Label = slicer.vtkMRMLLabelMapVolumeNode()
+    slicer.mrmlScene.AddNode(brainWM_thin_Label)
+    params = {}
+    params["inputVolume"] = MNIWM_thin_Label.GetID()
+    params["referenceVolume"] = outputVolume.GetID()
+    params["outputVolume"] = brainWM_thin_Label.GetID()
+    params["warpTransform"] = registrationMNI2NativeTransform.GetID()
+    params["inverseTransform"] = False
+    params["interpolationMode"] = "NearestNeighbor"
+    params["pixelType"] = "binary"
+
+    slicer.cli.run(slicer.modules.brainsresample, None, params, wait_for_completion=True)
+
+    #################################################################################################################
+    #                                            Lesion segmentation                                                #
+    #################################################################################################################
+    slicer.util.showStatusMessage("Step 4: Enhancing hyperintenses lesions...")
+    lesionUpdate = slicer.vtkMRMLScalarVolumeNode()
+    slicer.mrmlScene.AddNode(lesionUpdate)
+
+    # Enhancing lesion contrast...
     regParams = {}
     regParams["inputVolume"] = outputVolume.GetID()
-    regParams["outputVolume"] = inputBiasSmoothLesionEnhancedVolume.GetID()
-    regParams["maskVolume"] = MNINativeWMLabel.GetID()
+    regParams["outputVolume"] = lesionUpdate.GetID()
+    regParams["maskVolume"] = brainWM_thin_Label.GetID()
     regParams["numberOfBins"] = numberOfBins
     regParams["flipObject"] = flipObject
     regParams["thrType"] = thresholdMethod
 
     slicer.cli.run(slicer.modules.logisticcontrastenhancement, None, regParams, wait_for_completion=True)
 
-    #################################################################################################################
-    #                                              Contrast Adjustment                                              #
-    #################################################################################################################
-    slicer.util.showStatusMessage("Step 6/6: Increasing input image contrast...")
+    # Increasing FLAIR lesions contrast...
     regParams = {}
-    regParams["inputVolume"] = outputVolume.GetID()
-    regParams["contrastMap"] = inputBiasSmoothLesionEnhancedVolume.GetID()
-    regParams["regionMask"] = MNINativeWMLabel.GetID()
+    regParams["inputVolume"] = inputVolume.GetID()
+    regParams["contrastMap"] = lesionUpdate.GetID()
+    regParams["regionMask"] = brainWM_thin_Label.GetID()
     regParams["outputVolume"] = outputVolume.GetID()
     regParams["weight"] = weightingValue
     regParams["lesionThr"] = labelThreshold
@@ -482,11 +485,11 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
 
 
     # Removing unnecessary nodes
-    slicer.mrmlScene.RemoveNode(MNITWhiteMatterNode)
+    slicer.mrmlScene.RemoveNode(registrationMNI2NativeTransform)
     slicer.mrmlScene.RemoveNode(MNITemplateNode)
-    slicer.mrmlScene.RemoveNode(MNINativeWMLabel)
-    slicer.mrmlScene.RemoveNode(inputBiasSmoothLesionEnhancedVolume)
-
+    slicer.mrmlScene.RemoveNode(MNIWM_thin_Label)
+    slicer.mrmlScene.RemoveNode(brainWM_thin_Label)
+    slicer.mrmlScene.RemoveNode(lesionUpdate)
 
     slicer.util.showStatusMessage("Processing completed")
     logging.info('Processing completed')

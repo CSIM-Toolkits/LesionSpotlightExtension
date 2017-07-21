@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <executable>
-  <category>Utilities.CSIM Supporting Modules.LesionSpotlight</category>
+  <category>Utilities.CSIM Supporting Modules.Lesion Spotlight</category>
   <title>Automatic FLAIR Threshold</title>
   <description><![CDATA[This is a CLI supporting module and it is supposed to not be used directly with a simple input image]]></description>
   <version>0.0.1</version>
