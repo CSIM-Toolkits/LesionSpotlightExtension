@@ -39,7 +39,7 @@ class LSContrastEnhancer(ScriptedLoadableModule):
     self.parent.dependencies = []
     self.parent.contributors = ["Antonio Carlos Senra Filho (University of Sao Paulo), Luiz Otavio Murta Junior (University of Sao Paulo)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
-    This module offer a contrast increasing approach for hyperintense lesions on T2-FLAIR MRI acquisitions, which is mainly applicable in Multiple Sclerosis lesion detection.
+    This module offer a contrast enhancement approach for hyperintense lesions on T2-FLAIR MRI acquisitions, which is mainly applicable in Multiple Sclerosis lesion detection.
     More details about the modules functionalities and how to use it, please check the wiki page: https://www.slicer.org/wiki/Documentation/Nightly/Extensions/LesionSpotlight
     """
     self.parent.acknowledgementText = """
@@ -112,95 +112,6 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     parametersInputFormLayout.addRow("Is brain extracted?",
                                             self.setIsBETWidget)
 
-    #
-    # Noise Attenuation Parameters Area
-    #
-    parametersNoiseAttenuationCollapsibleButton = ctk.ctkCollapsibleButton()
-    parametersNoiseAttenuationCollapsibleButton.text = "Noise Attenuation Parameters"
-    self.layout.addWidget(parametersNoiseAttenuationCollapsibleButton)
-
-    # Layout within the dummy collapsible button
-    parametersNoiseAttenuationFormLayout = qt.QFormLayout(parametersNoiseAttenuationCollapsibleButton)
-
-    #
-    # Filtering Parameters: Condutance
-    #
-    self.setFilteringCondutanceWidget = ctk.ctkSliderWidget()
-    self.setFilteringCondutanceWidget.maximum = 50
-    self.setFilteringCondutanceWidget.minimum = 1
-    self.setFilteringCondutanceWidget.value = 5
-    self.setFilteringCondutanceWidget.singleStep = 1
-    self.setFilteringCondutanceWidget.setToolTip("Condutance parameter.")
-    parametersNoiseAttenuationFormLayout.addRow("Condutance ", self.setFilteringCondutanceWidget)
-
-    #
-    # Filtering Parameters: Number of iterations
-    #
-    self.setFilteringNumberOfIterationWidget = ctk.ctkSliderWidget()
-    self.setFilteringNumberOfIterationWidget.maximum = 50
-    self.setFilteringNumberOfIterationWidget.minimum = 1
-    self.setFilteringNumberOfIterationWidget.value = 5
-    self.setFilteringNumberOfIterationWidget.singleStep = 1
-    self.setFilteringNumberOfIterationWidget.setToolTip("Number of iterations parameter.")
-    parametersNoiseAttenuationFormLayout.addRow("Number Of Iterations ", self.setFilteringNumberOfIterationWidget)
-
-    #
-    # Filtering Parameters: Q value
-    #
-    self.setFilteringQWidget = ctk.ctkSliderWidget()
-    self.setFilteringQWidget.singleStep = 0.1
-    self.setFilteringQWidget.minimum = 0.01
-    self.setFilteringQWidget.maximum = 2.0
-    self.setFilteringQWidget.value = 1.2
-    self.setFilteringQWidget.setToolTip("Q value parameter.")
-    parametersNoiseAttenuationFormLayout.addRow("Q Value ", self.setFilteringQWidget)
-
-    #
-    # Registration Parameters Area
-    #
-    parametersRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
-    parametersRegistrationCollapsibleButton.text = "Registration Parameters"
-    self.layout.addWidget(parametersRegistrationCollapsibleButton)
-
-    # Layout within the dummy collapsible button
-    parametersRegistrationFormLayout = qt.QFormLayout(parametersRegistrationCollapsibleButton)
-
-
-
-    #
-    # Percentage Sampling Area
-    #
-    self.setPercSamplingQWidget = qt.QDoubleSpinBox()
-    self.setPercSamplingQWidget.setDecimals(4)
-    self.setPercSamplingQWidget.setMaximum(1)
-    self.setPercSamplingQWidget.setMinimum(0.0001)
-    self.setPercSamplingQWidget.setSingleStep(0.001)
-    self.setPercSamplingQWidget.setValue(0.002)
-    self.setPercSamplingQWidget.setToolTip("Percentage of voxel used in registration.")
-    parametersRegistrationFormLayout.addRow("Percentage Of Samples ", self.setPercSamplingQWidget)
-
-    #
-    # Initiation Method Area
-    #
-    self.setInitiationRegistrationBooleanWidget = ctk.ctkComboBox()
-    self.setInitiationRegistrationBooleanWidget.addItem("useMomentsAlign")
-    self.setInitiationRegistrationBooleanWidget.addItem("Off")
-    self.setInitiationRegistrationBooleanWidget.addItem("useCenterOfHeadAlign")
-    self.setInitiationRegistrationBooleanWidget.addItem("useGeometryAlign")
-    self.setInitiationRegistrationBooleanWidget.setToolTip(
-      "Initialization method used for the MNI152 registration.")
-    parametersRegistrationFormLayout.addRow("Initiation Method ", self.setInitiationRegistrationBooleanWidget)
-
-    #
-    # Interpolation Method Area
-    #
-    self.setInterpolationMethodBooleanWidget = ctk.ctkComboBox()
-    self.setInterpolationMethodBooleanWidget.addItem("Linear")
-    self.setInterpolationMethodBooleanWidget.addItem("BSpline")
-    self.setInterpolationMethodBooleanWidget.addItem("NearestNeighbor")
-    self.setInterpolationMethodBooleanWidget.setToolTip(
-      "Choose the interpolation method used to register the standard space to the native space. Options: Linear, NearestNeighbor, B-Spline")
-    parametersRegistrationFormLayout.addRow("Interpolation ", self.setInterpolationMethodBooleanWidget)
 
     #
     # Lesion Enhancement Function Parameters Area
@@ -267,6 +178,96 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     self.setThrehsoldLabelMapWidget.setValue(0.80)
     self.setThrehsoldLabelMapWidget.setToolTip("Threshold for the lesion label Map.")
     parametersLesionEnhancementFormLayout.addRow("Label Map Threshold ", self.setThrehsoldLabelMapWidget)
+
+    #
+    # Noise Attenuation Parameters Area
+    #
+    parametersNoiseAttenuationCollapsibleButton = ctk.ctkCollapsibleButton()
+    parametersNoiseAttenuationCollapsibleButton.text = "Noise Attenuation Parameters"
+    parametersNoiseAttenuationCollapsibleButton.collapsed = True
+    self.layout.addWidget(parametersNoiseAttenuationCollapsibleButton)
+
+    # Layout within the dummy collapsible button
+    parametersNoiseAttenuationFormLayout = qt.QFormLayout(parametersNoiseAttenuationCollapsibleButton)
+
+    #
+    # Filtering Parameters: Condutance
+    #
+    self.setFilteringCondutanceWidget = ctk.ctkSliderWidget()
+    self.setFilteringCondutanceWidget.maximum = 50
+    self.setFilteringCondutanceWidget.minimum = 1
+    self.setFilteringCondutanceWidget.value = 5
+    self.setFilteringCondutanceWidget.singleStep = 1
+    self.setFilteringCondutanceWidget.setToolTip("Condutance parameter.")
+    parametersNoiseAttenuationFormLayout.addRow("Condutance ", self.setFilteringCondutanceWidget)
+
+    #
+    # Filtering Parameters: Number of iterations
+    #
+    self.setFilteringNumberOfIterationWidget = ctk.ctkSliderWidget()
+    self.setFilteringNumberOfIterationWidget.maximum = 50
+    self.setFilteringNumberOfIterationWidget.minimum = 1
+    self.setFilteringNumberOfIterationWidget.value = 5
+    self.setFilteringNumberOfIterationWidget.singleStep = 1
+    self.setFilteringNumberOfIterationWidget.setToolTip("Number of iterations parameter.")
+    parametersNoiseAttenuationFormLayout.addRow("Number Of Iterations ", self.setFilteringNumberOfIterationWidget)
+
+    #
+    # Filtering Parameters: Q value
+    #
+    self.setFilteringQWidget = ctk.ctkSliderWidget()
+    self.setFilteringQWidget.singleStep = 0.1
+    self.setFilteringQWidget.minimum = 0.01
+    self.setFilteringQWidget.maximum = 2.0
+    self.setFilteringQWidget.value = 1.2
+    self.setFilteringQWidget.setToolTip("Q value parameter.")
+    parametersNoiseAttenuationFormLayout.addRow("Q Value ", self.setFilteringQWidget)
+
+    #
+    # Registration Parameters Area
+    #
+    parametersRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
+    parametersRegistrationCollapsibleButton.text = "Registration Parameters"
+    parametersRegistrationCollapsibleButton.collapsed = True
+    self.layout.addWidget(parametersRegistrationCollapsibleButton)
+
+    # Layout within the dummy collapsible button
+    parametersRegistrationFormLayout = qt.QFormLayout(parametersRegistrationCollapsibleButton)
+
+    #
+    # Percentage Sampling Area
+    #
+    self.setPercSamplingQWidget = qt.QDoubleSpinBox()
+    self.setPercSamplingQWidget.setDecimals(4)
+    self.setPercSamplingQWidget.setMaximum(1)
+    self.setPercSamplingQWidget.setMinimum(0.0001)
+    self.setPercSamplingQWidget.setSingleStep(0.001)
+    self.setPercSamplingQWidget.setValue(0.002)
+    self.setPercSamplingQWidget.setToolTip("Percentage of voxel used in registration.")
+    parametersRegistrationFormLayout.addRow("Percentage Of Samples ", self.setPercSamplingQWidget)
+
+    #
+    # Initiation Method Area
+    #
+    self.setInitiationRegistrationBooleanWidget = ctk.ctkComboBox()
+    self.setInitiationRegistrationBooleanWidget.addItem("useMomentsAlign")
+    self.setInitiationRegistrationBooleanWidget.addItem("Off")
+    self.setInitiationRegistrationBooleanWidget.addItem("useCenterOfHeadAlign")
+    self.setInitiationRegistrationBooleanWidget.addItem("useGeometryAlign")
+    self.setInitiationRegistrationBooleanWidget.setToolTip(
+      "Initialization method used for the MNI152 registration.")
+    parametersRegistrationFormLayout.addRow("Initiation Method ", self.setInitiationRegistrationBooleanWidget)
+
+    #
+    # Interpolation Method Area
+    #
+    self.setInterpolationMethodBooleanWidget = ctk.ctkComboBox()
+    self.setInterpolationMethodBooleanWidget.addItem("Linear")
+    self.setInterpolationMethodBooleanWidget.addItem("BSpline")
+    self.setInterpolationMethodBooleanWidget.addItem("NearestNeighbor")
+    self.setInterpolationMethodBooleanWidget.setToolTip(
+      "Choose the interpolation method used to register the standard space to the native space. Options: Linear, NearestNeighbor, B-Spline")
+    parametersRegistrationFormLayout.addRow("Interpolation ", self.setInterpolationMethodBooleanWidget)
 
     #
     # Apply Button
@@ -472,6 +473,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
 
     slicer.cli.run(slicer.modules.logisticcontrastenhancement, None, regParams, wait_for_completion=True)
 
+#TODO Ver error numerical fault quando roda este CLI
     # Increasing FLAIR lesions contrast...
     regParams = {}
     regParams["inputVolume"] = inputVolume.GetID()

@@ -57,7 +57,7 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
   """
 
   def setup(self):
-    ScriptedLoadableModuleWidget.setup(self)
+    # ScriptedLoadableModuleWidget.setup(self)
     # Instantiate and connect widgets ...
 
     #
@@ -216,6 +216,7 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     #
     parametersRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
     parametersRegistrationCollapsibleButton.text = "Registration Parameters"
+    parametersRegistrationCollapsibleButton.collapsed = True
     self.layout.addWidget(parametersRegistrationCollapsibleButton)
 
     # Layout within the dummy collapsible button

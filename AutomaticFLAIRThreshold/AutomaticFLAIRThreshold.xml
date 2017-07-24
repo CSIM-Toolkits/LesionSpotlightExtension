@@ -59,7 +59,7 @@
       <default>0.1</default>
       <constraints>
         <minimum>0.01</minimum>
-        <maximum>0.9</maximum>
+        <maximum>0.99</maximum>
         <step>0.01</step>
       </constraints>
     </float>
@@ -98,7 +98,7 @@
       <default>10</default>
       <constraints>
         <minimum>1</minimum>
-        <maximum>100</maximum>
+        <maximum>5000</maximum>
         <step>1</step>
       </constraints>
     </integer>
