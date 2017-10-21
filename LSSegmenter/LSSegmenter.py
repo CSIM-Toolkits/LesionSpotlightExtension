@@ -37,7 +37,7 @@ class LSSegmenter(ScriptedLoadableModule):
     self.parent.title = "LS Segmenter"
     self.parent.categories = ["Segmentation"]
     self.parent.dependencies = []
-    self.parent.contributors = ["Antonio Carlos Senra Filho (University of Sao Paulo), Luiz Otavio Murta Junior (University of Sao Paulo)"] # replace with "Firstname Lastname (Organization)"
+    self.parent.contributors = ["Antonio Carlos Senra Filho (University of Sao Paulo)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
     This module offer a voxel-intensity lesion segmentation method based on logistic contrast enhancement and threshold level.
     At moment, this method was studied on hyperintense T2-FLAIR lesion segmentation in Multiple Sclerosis lesion segmentation.
@@ -69,8 +69,6 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
 
     # Layout within the dummy collapsible button
     parametersInputFormLayout = qt.QFormLayout(parametersInputCollapsibleButton)
-
-    # TODO pensar em dar um upgrade no algoritmo...colocar um tratamento de imagem similar ao BET, fazendo um histograma cumulativo e retirar os valores menores que 2% e maiores que 98%...assim retira o sinal outlier da imagem que pode dar problema para estimar a curva sigmoidal...caso estranho no dado MICCAI2016 SATH
 
     #
     # input FLAIR volume selector
@@ -210,7 +208,6 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
     self.setNumberOfBinsWidget.setToolTip("Number Of Bins for the histogram calculation")
     parametersSegmentationFormLayout.addRow("Number Of Bins ", self.setNumberOfBinsWidget)
 
-    # TODO Colocar a opcao de usar ANTs para coregistro...similar ao que eh feitoc om DTILesionTrack
     #
     # Registration Parameters Area
     #
@@ -544,10 +541,8 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
         regParams = {}
         regParams["inputVolume"] = inputFLAIRVolume_tmp.GetID()
         regParams["contrastMap"] = lesionUpdate.GetID()
-        regParams["regionMask"] = MNIWM_thin_Label.GetID()
         regParams["outputVolume"] = inputFLAIRVolume_tmp.GetID()
         regParams["weight"] = 0
-        regParams["lesionThr"] = lThr
 
         slicer.cli.run(slicer.modules.weightedenhancementimagefilter, None, regParams, wait_for_completion=True)
 
@@ -558,7 +553,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
       params["lesionProbMap"] = lesionUpdate.GetID()
       params["wmMask"] = MNIWMLabel.GetID()
       params["outputLesionMap"] = outputLabel.GetID()
-      params["lesionThr"] = (1 - lThr)
+      params["lesionThr"] = lThr
       params["wmMatch"] = wmMatch
       params["minimumSize"] = minimumSize
 

@@ -18,6 +18,9 @@
 #include "itkLogisticContrastEnhancementImageFilter.h"
 #include "itkSigmoidImageFilter.h"
 #include "itkMaskImageFilter.h"
+#include "itkThresholdImageFilter.h"
+#include "itkImageRegionIterator.h"
+#include "itkImageRegionConstIterator.h"
 
 #include "itkPluginUtilities.h"
 
@@ -61,13 +64,65 @@ int DoIt( int argc, char * argv[], T )
     typename LabelReaderType::Pointer labelReader = LabelReaderType::New();
 
     reader->SetFileName( inputVolume.c_str() );
-
     labelReader->SetFileName( maskVolume.c_str() );
 
     mask->SetInput(reader->GetOutput());
     mask->SetMaskImage(labelReader->GetOutput());
 
-    enhParameters->SetInput(mask->GetOutput());
+    //Removing signal outliers using a similar strategy applied at BET brain extraction algorithm.
+    typedef itk::Statistics::ImageToHistogramFilter< InputImageType >   HistogramFilterType;
+    typename  HistogramFilterType::Pointer histogramFilter =  HistogramFilterType::New();
+
+    typedef typename HistogramFilterType::HistogramSizeType   SizeType;
+    SizeType size( 1 );
+    size[0] = 255;
+    histogramFilter->SetHistogramSize( size );
+
+    typename HistogramFilterType::HistogramMeasurementVectorType lowerBound( 1 );
+    typename HistogramFilterType::HistogramMeasurementVectorType upperBound( 1 );
+    lowerBound[0] = 0;
+    upperBound[0] = 256;
+    histogramFilter->SetHistogramBinMinimum( lowerBound );
+    histogramFilter->SetHistogramBinMaximum( upperBound );
+
+    histogramFilter->SetInput(  mask->GetOutput()  );
+    histogramFilter->Update();
+
+    typedef typename HistogramFilterType::HistogramType  HistogramType;
+    const HistogramType * histogram = histogramFilter->GetOutput();
+
+    vector<double> cdf;
+    double sum=0,cdf_sum=0;
+    for (int p = 0; p < histogram->Size(); ++p) {
+        sum += histogram->GetFrequency(p, 0);
+    }
+
+    for (int i = 0; i < histogram->Size(); ++i) {
+        cdf_sum+=(double)histogram->GetFrequency(i, 0)/(double)sum;
+        cdf.push_back(cdf_sum);
+    }
+
+    InputPixelType lowThr, highThr;
+    for (int i = 0; i < cdf.size(); ++i) {
+        //Correcting data set to remove CDF lower than 2% and higher than 98%.
+        //Finding the threshold values to cut each part of the image histogram.
+        if (cdf[i]>0.005 && cdf[i]<0.01) {
+            lowThr=histogram->GetBinMax(0, i);
+        }
+        if (cdf[i]>0.98 && cdf[i]<0.99) {
+            highThr= histogram->GetBinMax(0, i);
+        }
+    }
+
+    typedef itk::ThresholdImageFilter< InputImageType >   ThresholdType;
+    typename ThresholdType::Pointer cleanMask = ThresholdType::New();
+    cleanMask->SetInput(mask->GetOutput());
+    cleanMask->ThresholdOutside(lowThr, highThr);
+    cleanMask->SetOutsideValue(0);
+
+
+    //Inserting data in the Logistic Enhancemente algorithm.
+    enhParameters->SetInput(cleanMask->GetOutput());
     enhParameters->SetMaximumOutput(1.0);
     enhParameters->SetMinimumOutput(0.0);
     enhParameters->SetNumberOfBins(numberOfBins);
@@ -106,6 +161,7 @@ int DoIt( int argc, char * argv[], T )
 
     return EXIT_SUCCESS;
 }
+
 
 } // end of anonymous namespace
 

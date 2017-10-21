@@ -23,14 +23,7 @@
       <label>Contrast Weighting Map</label>
       <channel>input</channel>
       <index>1</index>
-      <description><![CDATA[Contrast map to inform the spatial contrast weighting along the image space. The output from LSSegmenter could be applied here.]]></description>
-    </image>
-    <image type="label">
-      <name>regionMask</name>
-      <label>Region Mask</label>
-      <channel>input</channel>
-      <index>2</index>
-      <description><![CDATA[Region mask where the contrast should be related to.]]></description>
+      <description><![CDATA[Contrast map to inform the spatial contrast weighting along the image space. The output from Logistic Contrast Enhancement module could be applied here.]]></description>
     </image>
     <image>
       <name>outputVolume</name>
@@ -39,26 +32,18 @@
       <index>3</index>
       <description><![CDATA[Output Volume]]></description>
     </image>
-    <integer>
+    <float>
       <name>weight</name>
       <longflag>--weight</longflag>
       <flag>w</flag>
       <label>Weighting Contrast</label>
-      <description><![CDATA[The percentual weighting contrast to be applied over the image. The contrast map is the baseline spatial weighting distribution to increase the voxel contrast.]]></description>
-      <default>15</default>
+      <description><![CDATA[The weighting controller that is useful to adjust how much the image signal should be changed. The contrast map is the baseline spatial weighting distribution to increase the voxel contrast, which should inform the image areas that would be enhanced. Negative values informs that a smooth increase of signal should be applied (w = -0.5 will not affect the original image). Positive values indicates a more aggressive signal adjustment, resulting in more signal contrast (w = 0.5 will double the contrast map signal adjustment). If this weighting value is equal to zero, the contrast map is followed as is.]]></description>
+      <default>0</default>
       <constraints>
-        <minimum>0</minimum>
-        <maximum>100</maximum>
-        <step>1</step>
+        <minimum>-0.5</minimum>
+        <maximum>0.5</maximum>
+        <step>0.001</step>
       </constraints>
-    </integer>
-    <double>
-      <name>lesionThr</name>
-      <longflag>--lThr</longflag>
-      <flag>l</flag>
-      <label>Lesion Threshold</label>
-      <description><![CDATA[Threshold to set of is the lesion intensity level present in the contrast map.]]></description>
-      <default>0.85</default>
-    </double>
+    </float>
   </parameters>
 </executable>

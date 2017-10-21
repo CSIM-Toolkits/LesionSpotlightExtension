@@ -37,7 +37,7 @@ class LSContrastEnhancer(ScriptedLoadableModule):
     self.parent.title = "LS Contrast Enhancer"
     self.parent.categories = ["Filtering"]
     self.parent.dependencies = []
-    self.parent.contributors = ["Antonio Carlos Senra Filho (University of Sao Paulo), Luiz Otavio Murta Junior (University of Sao Paulo)"] # replace with "Firstname Lastname (Organization)"
+    self.parent.contributors = ["Antonio Carlos Senra Filho (University of Sao Paulo)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
     This module offer a contrast enhancement approach for hyperintense lesions on T2-FLAIR MRI acquisitions, which is mainly applicable in Multiple Sclerosis lesion detection.
     More details about the modules functionalities and how to use it, please check the wiki page: https://www.slicer.org/wiki/Documentation/Nightly/Extensions/LesionSpotlight
@@ -56,7 +56,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
   """
 
   def setup(self):
-    ScriptedLoadableModuleWidget.setup(self)
+    # ScriptedLoadableModuleWidget.setup(self)
 
     # Instantiate and connect widgets ...
 
@@ -127,11 +127,15 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
     # Weighted Lesion Enhancement
     #
     self.setWeightedEnhancementWidget = ctk.ctkSliderWidget()
-    self.setWeightedEnhancementWidget.maximum = 100
-    self.setWeightedEnhancementWidget.minimum = 0
-    self.setWeightedEnhancementWidget.value = 5
-    self.setWeightedEnhancementWidget.singleStep = 1
-    self.setWeightedEnhancementWidget.setToolTip("Weighting enhancement value, in percentage, that will be used to increase the lesion signal in the image.")
+    self.setWeightedEnhancementWidget.maximum = 0.5
+    self.setWeightedEnhancementWidget.minimum = -0.5
+    self.setWeightedEnhancementWidget.value = 0
+    self.setWeightedEnhancementWidget.singleStep = 0.001
+    self.setWeightedEnhancementWidget.setToolTip("The weighting controller that is useful to adjust how much the image signal should be changed. "
+                                                 "The contrast map is the baseline spatial weighting distribution to increase the voxel contrast, which should inform the image areas that would be enhanced. "
+                                                 "Negative values informs that a smooth increase of signal should be applied (w = -0.5 will not affect the original image). "
+                                                 "Positive values indicates a more aggressive signal adjustment, resulting in more signal contrast (w = 0.5 will double the contrast map signal adjustment). "
+                                                 "If this weighting value is equal to zero, the contrast map is followed as is..")
     parametersLesionEnhancementFormLayout.addRow("Weighting Enhancement ", self.setWeightedEnhancementWidget)
 
     #
@@ -166,18 +170,6 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
       "Flip object in the image. This informs if the dark part of the histogram that should be enhanced.")
     parametersLesionEnhancementFormLayout.addRow("Flip Object",
                                                  self.setFlipObjectWidget)
-
-    #
-    # Threshold Label Map
-    #
-    self.setThrehsoldLabelMapWidget = qt.QDoubleSpinBox()
-    # self.setThrehsoldLabelMapWidget.setDecimals(4)
-    self.setThrehsoldLabelMapWidget.setMaximum(0.99)
-    self.setThrehsoldLabelMapWidget.setMinimum(0.05)
-    self.setThrehsoldLabelMapWidget.setSingleStep(0.01)
-    self.setThrehsoldLabelMapWidget.setValue(0.80)
-    self.setThrehsoldLabelMapWidget.setToolTip("Threshold for the lesion label Map.")
-    parametersLesionEnhancementFormLayout.addRow("Label Map Threshold ", self.setThrehsoldLabelMapWidget)
 
     #
     # Noise Attenuation Parameters Area
@@ -309,7 +301,6 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
               , self.setFilteringCondutanceWidget.value
               , self.setFilteringNumberOfIterationWidget.value
               , self.setFilteringQWidget.value
-              , self.setThrehsoldLabelMapWidget.value
               )
 
 #
@@ -355,7 +346,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
 
   def run(self, inputVolume, outputVolume, isBET, sampling, initiation, interpolation,
               numberOfBins, flipObject, weightingValue, thresholdMethod, conductance, nIter,
-              qValue, labelThreshold):
+              qValue):
 
     """
     Run the actual algorithm
@@ -473,15 +464,12 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
 
     slicer.cli.run(slicer.modules.logisticcontrastenhancement, None, regParams, wait_for_completion=True)
 
-#TODO Ver error numerical fault quando roda este CLI
     # Increasing FLAIR lesions contrast...
     regParams = {}
     regParams["inputVolume"] = inputVolume.GetID()
     regParams["contrastMap"] = lesionUpdate.GetID()
-    regParams["regionMask"] = brainWM_thin_Label.GetID()
     regParams["outputVolume"] = outputVolume.GetID()
     regParams["weight"] = weightingValue
-    regParams["lesionThr"] = labelThreshold
 
     slicer.cli.run(slicer.modules.weightedenhancementimagefilter, None, regParams, wait_for_completion=True)
 
