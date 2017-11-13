@@ -24,7 +24,14 @@
       <channel>input</channel>
       <index>1</index>
       <description><![CDATA[Contrast map to inform the spatial contrast weighting along the image space. The output from Logistic Contrast Enhancement module could be applied here.]]></description>
-    </image>
+    </image>		
+     <image type="label">		
+       <name>regionMask</name>		
+       <label>Region Mask</label>		
+       <channel>input</channel>		
+       <index>2</index>		
+       <description><![CDATA[Region mask where the contrast should be related to.]]></description>		
+      </image>
     <image>
       <name>outputVolume</name>
       <label>Output Volume</label>
@@ -37,7 +44,7 @@
       <longflag>--weight</longflag>
       <flag>w</flag>
       <label>Weighting Contrast</label>
-      <description><![CDATA[The weighting controller that is useful to adjust how much the image signal should be changed. The contrast map is the baseline spatial weighting distribution to increase the voxel contrast, which should inform the image areas that would be enhanced. Negative values informs that a smooth increase of signal should be applied (w = -0.5 will not affect the original image). Positive values indicates a more aggressive signal adjustment, resulting in more signal contrast (w = 0.5 will double the contrast map signal adjustment). If this weighting value is equal to zero, the contrast map is followed as is.]]></description>
+      <description><![CDATA[The weighting controller that is useful to adjust how much the image signal should be changed. The contrast map is the baseline spatial weighting distribution to increase the voxel contrast, which should inform the image areas that would be enhanced. Negative values informs that a smooth increase of signal should be applied (w = -0.5 will not affect the original image). Positive values indicates a more aggressive signal adjustment, resulting in more signal contrast (w = 0.5 will double the contrast map signal adjustment). If this weighting value is equal to zero, the contrast map is followed as is. NOTE: If the signal gaussianity is true, the weight value is passed as an absolute value.]]></description>
       <default>0</default>
       <constraints>
         <minimum>-0.5</minimum>
@@ -45,5 +52,26 @@
         <step>0.001</step>
       </constraints>
     </float>
+    <boolean>
+	<name>maintainGaussianity</name>
+	<longflag>--maintainGaussianity</longflag>
+	<flag>g</flag>
+	<description><![CDATA[Choose if the enhanced image should maintain the global signal gaussianity, i.e. if the output signal keep the Gaussian distribution after the local contrast enhancement process being made.]]></description>
+	<label>Maintain signal gaussianity</label>
+	<default>false</default>
+    </boolean>
+    <double>		
+       <name>lesionThr</name>		
+       <longflag>--lThr</longflag>		
+       <flag>l</flag>		
+       <label>Lesion Threshold</label>		
+       <description><![CDATA[Threshold to set of is the lesion intensity level present in the contrast map.]]></description>		
+       <default>0.85</default>	
+      <constraints>
+        <minimum>0.01</minimum>
+        <maximum>0.99</maximum>
+        <step>0.01</step>
+      </constraints>	
+     </double>
   </parameters>
 </executable>

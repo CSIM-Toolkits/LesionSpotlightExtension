@@ -1,18 +1,18 @@
-/*
-   Copyright 2016 Antonio Carlos da Silva Senra Filho
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
- */
+/* 
+   Copyright 2016 Antonio Carlos da Silva Senra Filho 
+ 
+   Licensed under the Apache License, Version 2.0 (the "License"); 
+   you may not use this file except in compliance with the License. 
+   You may obtain a copy of the License at 
+ 
+       http://www.apache.org/licenses/LICENSE-2.0 
+ 
+   Unless required by applicable law or agreed to in writing, software 
+   distributed under the License is distributed on an "AS IS" BASIS, 
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+   See the License for the specific language governing permissions and 
+   limitations under the License. 
+ */ 
 #ifndef __itkLogisticContrastEnhancementImageFilter_hxx
 #define __itkLogisticContrastEnhancementImageFilter_hxx
 #include "itkLogisticContrastEnhancementImageFilter.h"
@@ -48,7 +48,6 @@ LogisticContrastEnhancementImageFilter< TInput, TOutput >
     this->m_MaximumOutput=1.0;
     this->m_MinimumOutput=0.0;
     this->m_Tolerance=1;
-    this->m_ManualTolerance=false;
     this->m_NumberOfBins=128;
     this->m_ThresholdMethod=1;
 }
@@ -162,76 +161,34 @@ LogisticContrastEnhancementImageFilter< TInput, TOutput >
         beta = ((imageStatistics->GetMaximum()-thr)/2.0)+thr;
     }
 
+    //Set Alpha
+    double alpha=0.0;
+    alpha=((-1)*(thr)+beta)/(log((100.0-static_cast<double>(m_Tolerance))/static_cast<double>(m_Tolerance)));
 
-    //Adjust automatic tolerance
-    if (m_ManualTolerance) {
-        //Set Alpha
-        double alpha=0.0;
-        if (m_FlipObjectArea) {
-            alpha=((-1)*(thr)+beta)/(log((100.0-static_cast<double>(m_Tolerance))/static_cast<double>(m_Tolerance)));
-        }else{
-            alpha=((-1)*(thr)+beta)/(log((100.0-static_cast<double>(m_Tolerance))/static_cast<double>(m_Tolerance)));
-        }
+    //Apply sigmoid on input image
+    typedef itk::SigmoidImageFilter<InputImageType, OutputImageType> SigmoidFilterType;
+    typename SigmoidFilterType::Pointer sigmoid = SigmoidFilterType::New();
+    sigmoid->SetInput(input);
+    sigmoid->SetOutputMinimum(m_MinimumOutput);
+    sigmoid->SetOutputMaximum(m_MaximumOutput);
+    sigmoid->SetAlpha(alpha);
+    sigmoid->SetBeta(beta);
+    sigmoid->Update();
 
-        //Apply sigmoid on input image
-        typedef itk::SigmoidImageFilter<InputImageType, OutputImageType> SigmoidFilterType;
-        typename SigmoidFilterType::Pointer sigmoid = SigmoidFilterType::New();
-        sigmoid->SetInput(input);
-        sigmoid->SetOutputMinimum(m_MinimumOutput);
-        sigmoid->SetOutputMaximum(m_MaximumOutput);
-        sigmoid->SetAlpha(alpha);
-        sigmoid->SetBeta(beta);
-        sigmoid->Update();
+    itk::ImageRegionConstIterator<TInput> sigmoidIterator(sigmoid->GetOutput(), sigmoid->GetOutput()->GetBufferedRegion());
+    itk::ImageRegionIterator<TOutput> outputIterator(output, output->GetBufferedRegion());
 
-        itk::ImageRegionConstIterator<TInput> sigmoidIterator(sigmoid->GetOutput(), sigmoid->GetOutput()->GetBufferedRegion());
-        itk::ImageRegionIterator<TOutput> outputIterator(output, output->GetBufferedRegion());
-
-        sigmoidIterator.IsAtBegin();
-        outputIterator.IsAtBegin();
-        while (!sigmoidIterator.IsAtEnd()) {
-            outputIterator.Set(sigmoidIterator.Get());
-            ++sigmoidIterator;
-            ++outputIterator;
-        }
-
-        //Output the (alpha,beta) parameters
-        m_Alpha=alpha;
-        m_Beta=beta;
-    }else{
-
-        //Set Alpha
-        double alpha=0.0;
-        if (m_FlipObjectArea) {
-            alpha=((-1)*(imageStatistics->GetMaximum())+beta)/(log(0.99/(1.0-0.99)));
-        }else{
-            alpha=((-1)*(imageStatistics->GetMaximum())+beta)/(log((1.0-0.99)/0.99));
-        }
-
-        //Apply sigmoid on input image
-        typedef itk::SigmoidImageFilter<InputImageType, OutputImageType> SigmoidFilterType;
-        typename SigmoidFilterType::Pointer sigmoid = SigmoidFilterType::New();
-        sigmoid->SetInput(input);
-        sigmoid->SetOutputMinimum(m_MinimumOutput);
-        sigmoid->SetOutputMaximum(m_MaximumOutput);
-        sigmoid->SetAlpha(alpha);
-        sigmoid->SetBeta(beta);
-        sigmoid->Update();
-
-        itk::ImageRegionConstIterator<TInput> sigmoidIterator(sigmoid->GetOutput(), sigmoid->GetOutput()->GetBufferedRegion());
-        itk::ImageRegionIterator<TOutput> outputIterator(output, output->GetBufferedRegion());
-
-        sigmoidIterator.IsAtBegin();
-        outputIterator.IsAtBegin();
-        while (!sigmoidIterator.IsAtEnd()) {
-            outputIterator.Set(sigmoidIterator.Get());
-            ++sigmoidIterator;
-            ++outputIterator;
-        }
-
-        //Output the (alpha,beta) parameters
-        m_Alpha=alpha;
-        m_Beta=beta;
+    sigmoidIterator.IsAtBegin();
+    outputIterator.IsAtBegin();
+    while (!sigmoidIterator.IsAtEnd()) {
+        outputIterator.Set(sigmoidIterator.Get());
+        ++sigmoidIterator;
+        ++outputIterator;
     }
+
+    //Output the (alpha,beta) parameters
+    m_Alpha=alpha;
+    m_Beta=beta;
 }
 
 template<typename TInput, typename TOutput>
@@ -239,7 +196,7 @@ void
 LogisticContrastEnhancementImageFilter<TInput, TOutput>
 ::checkTolerance(char tolerance) {
     if (tolerance > 100) {
-        std::cout<<"Tolerance is out of bound. Set in percentual (0 to 100)"<<std::endl;
+        std::cout<<"Tolerance is out of bound. It must be 0 < T < 100"<<std::endl;
         exit(EXIT_FAILURE);
     }
 }

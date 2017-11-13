@@ -56,7 +56,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
   """
 
   def setup(self):
-    # ScriptedLoadableModuleWidget.setup(self)
+     # ScriptedLoadableModuleWidget.setup(self)
 
     # Instantiate and connect widgets ...
 
@@ -135,8 +135,18 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
                                                  "The contrast map is the baseline spatial weighting distribution to increase the voxel contrast, which should inform the image areas that would be enhanced. "
                                                  "Negative values informs that a smooth increase of signal should be applied (w = -0.5 will not affect the original image). "
                                                  "Positive values indicates a more aggressive signal adjustment, resulting in more signal contrast (w = 0.5 will double the contrast map signal adjustment). "
-                                                 "If this weighting value is equal to zero, the contrast map is followed as is..")
+                                                 "If this weighting value is equal to zero, the contrast map is followed as is. NOTE: If the signal gaussianity is true, the weight value is passed as an absolute value.")
     parametersLesionEnhancementFormLayout.addRow("Weighting Enhancement ", self.setWeightedEnhancementWidget)
+
+    #
+    # Maintaing signal gaussianity
+    #
+    self.setKeepGaussianSignalWidget = ctk.ctkCheckBox()
+    self.setKeepGaussianSignalWidget.setChecked(False)
+    self.setKeepGaussianSignalWidget.setToolTip(
+      "Choose if the enhanced image should maintain the global signal gaussianity, i.e. if the output signal keep the Gaussian distribution after the local contrast enhancement process being made.")
+    parametersLesionEnhancementFormLayout.addRow("Maintaing signal gaussianity",
+                                     self.setKeepGaussianSignalWidget)
 
     #
     # Threshold Method Area
@@ -297,6 +307,7 @@ class LSContrastEnhancerWidget(ScriptedLoadableModuleWidget):
               , self.setNumberOfBinsWidget.value
               , self.setFlipObjectWidget.isChecked()
               , self.setWeightedEnhancementWidget.value
+              , self.setKeepGaussianSignalWidget.isChecked()
               , self.setThresholdLFMethodBooleanWidget.currentText
               , self.setFilteringCondutanceWidget.value
               , self.setFilteringNumberOfIterationWidget.value
@@ -345,7 +356,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     return True
 
   def run(self, inputVolume, outputVolume, isBET, sampling, initiation, interpolation,
-              numberOfBins, flipObject, weightingValue, thresholdMethod, conductance, nIter,
+              numberOfBins, flipObject, weightingValue, keepGaussianSignal, thresholdMethod, conductance, nIter,
               qValue):
 
     """
@@ -470,6 +481,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     regParams["contrastMap"] = lesionUpdate.GetID()
     regParams["outputVolume"] = outputVolume.GetID()
     regParams["weight"] = weightingValue
+    regParams["maintainGaussianity"] = keepGaussianSignal
 
     slicer.cli.run(slicer.modules.weightedenhancementimagefilter, None, regParams, wait_for_completion=True)
 

@@ -15,7 +15,11 @@
  */
 #include "itkImageFileWriter.h"
 
+#include "itkMaskImageFilter.h"
+#include "itkThresholdImageFilter.h"
+#include "itkSubtractImageFilter.h"
 #include "itkMultiplyImageFilter.h"
+#include "itkAddImageFilter.h"
 #include "itkStatisticsImageFilter.h"
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkImageRegionIterator.h"
@@ -39,63 +43,186 @@ int DoIt( int argc, char * argv[], T )
 
     typedef    T                              InputPixelType;
     typedef    T                              OutputPixelType;
+    typedef    unsigned char                  LabelPixelType;
 
     typedef itk::Image<InputPixelType,  3>    InputImageType;
     typedef itk::Image<OutputPixelType, 3>    OutputImageType;
+    typedef itk::Image<LabelPixelType, 3>     LabelImageType;
 
     typedef itk::ImageFileReader<InputImageType>      ReaderType;
+    typedef itk::ImageFileReader<LabelImageType>      LabelReaderType;
     typedef itk::ImageFileWriter<OutputImageType>     WriterType;
+    //    typedef itk::ImageFileWriter<InputImageType>      WeightedWriterType;
 
     typename ReaderType::Pointer inputReader = ReaderType::New();
     typename ReaderType::Pointer contrastMapReader = ReaderType::New();
+    typename LabelReaderType::Pointer regionMaskReader = LabelReaderType::New();
 
     inputReader->SetFileName( inputVolume.c_str() );
     contrastMapReader->SetFileName( contrastMap.c_str() );
+    regionMaskReader->SetFileName( regionMask.c_str() );
 
-    //Rescale the contrast map to a range that facilitates the signal enhancement.
-    //In practice, the lesion probability are realocated to a range between 1 < l < max(weighting), where the weight is provided by the user.
-    typedef itk::RescaleIntensityImageFilter<InputImageType,InputImageType> RescalerType;
-    typename RescalerType::Pointer rescaledContrastMap = RescalerType::New();
-    rescaledContrastMap->SetInput(contrastMapReader->GetOutput());
-    rescaledContrastMap->SetOutputMaximum(2.0 + (2.0 * weight));
-    rescaledContrastMap->SetOutputMinimum(1.0);
+    if (maintainGaussianity) {
+        //Rescale the contrast map to a range that facilitates the signal enhancement.
+        //In practice, the lesion probability are realocated to a range between 1 < l < max(weighting), where the weight is provided by the user.
+        typedef itk::RescaleIntensityImageFilter<InputImageType,InputImageType> RescalerType;
+        typename RescalerType::Pointer rescaledContrastMap = RescalerType::New();
+        rescaledContrastMap->SetInput(contrastMapReader->GetOutput());
+        rescaledContrastMap->SetOutputMaximum(2.0 + (2.0 * weight));
+        rescaledContrastMap->SetOutputMinimum(1.0);
 
-    //Apply the weighting map over the input image. The resulted image has an improved signal contrast.
-    typedef itk::MultiplyImageFilter< InputImageType >      MultiplyType;
-    typename MultiplyType::Pointer inputEnhanced = MultiplyType::New();
-    inputEnhanced->SetInput1(inputReader->GetOutput());
-    inputEnhanced->SetInput2(rescaledContrastMap->GetOutput());
-    inputEnhanced->Update();
+        //Apply the weighting map over the input image. The resulted image has an improved signal contrast.
+        typedef itk::MultiplyImageFilter< InputImageType >      MultiplyType;
+        typename MultiplyType::Pointer inputEnhanced = MultiplyType::New();
+        inputEnhanced->SetInput1(inputReader->GetOutput());
+        inputEnhanced->SetInput2(rescaledContrastMap->GetOutput());
+        inputEnhanced->Update();
 
-    //Info: Mean lesion contrast enhancement achieved in this iteration
-    typedef itk::ImageRegionIterator< InputImageType >              IteratorType;
-    IteratorType enhancedIt(inputEnhanced->GetOutput(), inputEnhanced->GetOutput()->GetBufferedRegion());
-    IteratorType origIt(inputReader->GetOutput(),inputReader->GetOutput()->GetBufferedRegion());
+        //Info: Mean lesion contrast enhancement achieved in this iteration
+        typedef itk::ImageRegionIterator< InputImageType >              IteratorType;
+        IteratorType enhancedIt(inputEnhanced->GetOutput(), inputEnhanced->GetOutput()->GetBufferedRegion());
+        IteratorType origIt(inputReader->GetOutput(),inputReader->GetOutput()->GetBufferedRegion());
 
-    enhancedIt.GoToBegin();
-    origIt.GoToBegin();
-    InputPixelType meanBoost=0;
-    int M=0;
-    while (!enhancedIt.IsAtEnd()) {
+        enhancedIt.GoToBegin();
+        origIt.GoToBegin();
+        InputPixelType meanBoost=0;
+        int M=0;
+        while (!enhancedIt.IsAtEnd()) {
             if (enhancedIt.Get()!=static_cast<InputPixelType>(0)) {
                 meanBoost+=(enhancedIt.Get()/origIt.Get())-static_cast<InputPixelType>(1);
                 M++;
                 ++origIt;
                 ++enhancedIt;
             }
-        ++origIt;
-        ++enhancedIt;
+            ++origIt;
+            ++enhancedIt;
+        }
+        meanBoost/=static_cast<InputPixelType>(M);
+        std::cout<<"Mean image contrast enhancement estimated in "<<(meanBoost)*static_cast<InputPixelType>(100)<<"% in comparison with the original image."<<std::endl;
+
+        typename WriterType::Pointer writer = WriterType::New();
+        writer->SetFileName( outputVolume.c_str() );
+        writer->SetInput( inputEnhanced->GetOutput() );
+        writer->SetUseCompression(1);
+        writer->Update();
+
+        return EXIT_SUCCESS;
+    }else{
+        //Split background and lesion regions
+        //Lesion image:
+
+        typedef itk::RescaleIntensityImageFilter<InputImageType,InputImageType> RescalerType;
+        typename RescalerType::Pointer rescaledContrastMap = RescalerType::New();
+        rescaledContrastMap->SetInput(contrastMapReader->GetOutput());
+        rescaledContrastMap->SetOutputMaximum(1.0);
+        rescaledContrastMap->SetOutputMinimum(0.0);
+
+
+        typedef itk::ThresholdImageFilter<InputImageType>  ThresholderType;
+        typename ThresholderType::Pointer lesionImage = ThresholderType::New();
+        lesionImage->SetInput(rescaledContrastMap->GetOutput());
+        lesionImage->ThresholdBelow(static_cast<InputPixelType>(lesionThr));
+        //Background image:
+        typedef itk::SubtractImageFilter<InputImageType>  SubtractType;
+        typename SubtractType::Pointer backgroundImage = SubtractType::New();
+        backgroundImage->SetInput1(rescaledContrastMap->GetOutput());
+        backgroundImage->SetInput2(lesionImage->GetOutput());
+
+        //Apply region mask over the contrast map
+        typedef itk::MaskImageFilter<InputImageType, LabelImageType>  MaskFilterType;
+        typename MaskFilterType::Pointer maskedImage = MaskFilterType::New();
+        maskedImage->SetInput(backgroundImage->GetOutput());
+        maskedImage->SetMaskImage(regionMaskReader->GetOutput());
+        maskedImage->Update();
+
+        //Calculating baseline contrast
+        InputPixelType baselineValue = 0;
+        typedef itk::ImageRegionIterator< InputImageType >              IteratorType;
+        IteratorType contrastIt(maskedImage->GetOutput(), maskedImage->GetOutput()->GetBufferedRegion());
+
+        contrastIt.GoToBegin();
+        int N=0;
+        while (!contrastIt.IsAtEnd()) {
+            //        std::cout<<contrastIt.Get()<<std::endl;
+            if (contrastIt.Get()!=static_cast<InputPixelType>(0)) {
+                baselineValue=baselineValue+contrastIt.Get();
+                ++contrastIt;
+                N++;
+            }
+            ++contrastIt;
+        }
+        baselineValue/=static_cast<InputPixelType>(N);
+        std::cout<<"Region mean contrast: "<<baselineValue<<std::endl;
+
+        typename SubtractType::Pointer baselineContrast = SubtractType::New();
+        baselineContrast->SetInput1(rescaledContrastMap->GetOutput());
+        baselineContrast->SetConstant2(baselineValue);
+
+        typename ThresholderType::Pointer finalContrasMap = ThresholderType::New();
+        finalContrasMap->SetInput(baselineContrast->GetOutput());
+        finalContrasMap->ThresholdBelow(0.0);
+        finalContrasMap->Update();
+
+        rescaledContrastMap->SetInput(finalContrasMap->GetOutput());
+        rescaledContrastMap->SetOutputMaximum(1.0);
+        rescaledContrastMap->SetOutputMinimum(0.0);
+
+        //Applying contrast weighting on the input image
+        InputPixelType contrastPercentage = std::abs(static_cast<InputPixelType>(weight))+static_cast<InputPixelType>(1);
+        typedef itk::MultiplyImageFilter< InputImageType >      MultiplyType;
+        typename MultiplyType::Pointer rescaledBoost = MultiplyType::New();
+        rescaledBoost->SetInput1(rescaledContrastMap->GetOutput());
+        rescaledBoost->SetConstant2(contrastPercentage);
+
+        typedef itk::AddImageFilter<InputImageType>             AddType;
+        typename AddType::Pointer boostWeight = AddType::New();
+        boostWeight->SetInput1(rescaledBoost->GetOutput());
+        boostWeight->SetConstant2(static_cast<InputPixelType>(1));
+        boostWeight->Update();
+
+        typename MultiplyType::Pointer inputEnhanced = MultiplyType::New();
+        inputEnhanced->SetInput1(inputReader->GetOutput());
+        inputEnhanced->SetInput2(boostWeight->GetOutput());
+        inputEnhanced->Update();
+
+        //Info: Mean lesion contrast enhancement
+        IteratorType enhancedIt(inputEnhanced->GetOutput(), inputEnhanced->GetOutput()->GetBufferedRegion());
+        IteratorType origIt(inputReader->GetOutput(),inputReader->GetOutput()->GetBufferedRegion());
+        IteratorType maskIt(finalContrasMap->GetOutput(), finalContrasMap->GetOutput()->GetBufferedRegion());
+
+        enhancedIt.GoToBegin();
+        origIt.GoToBegin();
+        maskIt.GoToBegin();
+        InputPixelType meanBoost=0;
+        int M=0;
+        while (!enhancedIt.IsAtEnd()) {
+            if (maskIt.Get()!=0) {
+                if (enhancedIt.Get()!=static_cast<InputPixelType>(0)) {
+                    meanBoost+=(enhancedIt.Get()/origIt.Get())-static_cast<InputPixelType>(1);
+                    M++;
+                    ++origIt;
+                    ++enhancedIt;
+                    ++maskIt;
+                }
+            }
+            ++origIt;
+            ++enhancedIt;
+            ++maskIt;
+        }
+
+        meanBoost/=static_cast<InputPixelType>(M);
+        std::cout<<"Mean image contrast enhancement estimated in "<<(meanBoost)*static_cast<InputPixelType>(100)<<"% in comparison with the original image."<<std::endl;
+
+        typename WriterType::Pointer writer = WriterType::New();
+        writer->SetFileName( outputVolume.c_str() );
+        writer->SetInput( inputEnhanced->GetOutput() );
+        writer->SetUseCompression(1);
+        writer->Update();
+
+        return EXIT_SUCCESS;
     }
-    meanBoost/=static_cast<InputPixelType>(M);
-    std::cout<<"Mean image contrast enhancement estimated in "<<(meanBoost)*static_cast<InputPixelType>(100)<<"% in comparison with the original image."<<std::endl;
 
-    typename WriterType::Pointer writer = WriterType::New();
-    writer->SetFileName( outputVolume.c_str() );
-    writer->SetInput( inputEnhanced->GetOutput() );
-    writer->SetUseCompression(1);
-    writer->Update();
 
-    return EXIT_SUCCESS;
 }
 
 } // end of anonymous namespace

@@ -57,7 +57,7 @@ class LSSegmenterWidget(ScriptedLoadableModuleWidget):
   """
 
   def setup(self):
-    # ScriptedLoadableModuleWidget.setup(self)
+     # ScriptedLoadableModuleWidget.setup(self)
     # Instantiate and connect widgets ...
 
     #
@@ -372,8 +372,8 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
     regParams["inputVolume"] = inputFLAIRVolume_tmp.GetID()
     regParams["outputVolume"] = inputFLAIRVolume_tmp.GetID()
     regParams["conductance"] = 10.0
-    regParams["useAutoConductance"] = False
-    regParams["optFunction"] = "Morphological"
+    regParams["useAutoConductance"] = True
+    regParams["optFunction"] = "Canny"
     regParams["iterations"] = 5
     regParams["q"] = 1.25
 
@@ -405,7 +405,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
       slicer.util.showStatusMessage("Step 3: MNI152 to native space registration...")
       registrationMNI2NativeTransform = slicer.vtkMRMLLinearTransformNode()
       registrationMNI2NativeTransform.SetName("regMNI2Native_linear")
-      slicer.mrmlScene.AddNode(registrationMNI2T1Transform)
+      slicer.mrmlScene.AddNode(registrationMNI2NativeTransform)
 
       regParams = {}
       regParams["fixedVolume"] = inputFLAIRVolume_tmp.GetID()
@@ -490,7 +490,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
       params["lesionProbMap"] = lesionUpdate.GetID()
       params["wmMask"] = brainWMLabel.GetID()
       params["outputLesionMap"] = outputLabel.GetID()
-      params["lesionThr"] = (1 - lThr)
+      params["lesionThr"] = lThr
       params["wmMatch"] = wmMatch
       params["minimumSize"] = minimumSize
 
@@ -543,6 +543,7 @@ class LSSegmenterLogic(ScriptedLoadableModuleLogic):
         regParams["contrastMap"] = lesionUpdate.GetID()
         regParams["outputVolume"] = inputFLAIRVolume_tmp.GetID()
         regParams["weight"] = 0
+        regParams["maintainGaussianity"] = False
 
         slicer.cli.run(slicer.modules.weightedenhancementimagefilter, None, regParams, wait_for_completion=True)
 

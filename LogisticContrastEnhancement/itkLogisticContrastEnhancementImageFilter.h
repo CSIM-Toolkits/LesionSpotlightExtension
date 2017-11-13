@@ -1,18 +1,18 @@
-/*
-   Copyright 2016 Antonio Carlos da Silva Senra Filho
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
- */
+/* 
+   Copyright 2016 Antonio Carlos da Silva Senra Filho 
+ 
+   Licensed under the Apache License, Version 2.0 (the "License"); 
+   you may not use this file except in compliance with the License. 
+   You may obtain a copy of the License at 
+ 
+       http://www.apache.org/licenses/LICENSE-2.0 
+ 
+   Unless required by applicable law or agreed to in writing, software 
+   distributed under the License is distributed on an "AS IS" BASIS, 
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+   See the License for the specific language governing permissions and 
+   limitations under the License. 
+ */ 
 #ifndef __itkLogisticContrastEnhancementImageFilter_h
 #define __itkLogisticContrastEnhancementImageFilter_h
 #include "itkImageToImageFilter.h"
@@ -69,15 +69,10 @@ public:
     itkSetMacro(FlipObjectArea, bool)
     itkBooleanMacro(FlipObjectArea)
 
-    /** Set if use manual tolerance. */
-    itkSetMacro(ManualTolerance, bool)
-    itkBooleanMacro(ManualTolerance)
-
     /** Set threshold method. */
     itkSetMacro(ThresholdMethod, unsigned char)
 
     itkGetMacro(FlipObjectArea, bool)
-    itkGetMacro(ManualTolerance, bool)
     itkGetMacro(Alpha, double)
     itkGetMacro(Beta, double)
     itkGetMacro(MaximumOutput, double)
@@ -108,7 +103,6 @@ protected:
     LogisticContrastEnhancementImageFilter();
     virtual ~LogisticContrastEnhancementImageFilter() {}
     bool m_FlipObjectArea;
-    bool m_ManualTolerance;
     char m_Tolerance;
     double m_Alpha;
     double m_Beta;
