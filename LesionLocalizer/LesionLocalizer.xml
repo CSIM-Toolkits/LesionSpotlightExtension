@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<executable>
+  <category>Utilities.CSIM Supporting Modules.Lesion Spotlight</category>
+  <title>Lesion Localizer</title>
+  <description><![CDATA[This is a CLI supporting module that organize a set of lesions (e.g. MS lesion load) into different predefined brain regions. Note: the regions must be in MNI space coordenates.]]></description>
+  <version>0.0.1</version>
+  <documentation-url>https://www.slicer.org/slicerWiki/index.php/Documentation/Nightly/Modules/LesionLocalizer</documentation-url>
+  <license>Slicer</license>
+  <contributor>Antonio Carlos Senra Filho (University of Sao Paulo), Luiz Otavio Murta Junior (University of Sao Paulo)</contributor>
+  <acknowledgements>This work was partially funded by CNPq grant 405574/2017-7</acknowledgements>
+  <parameters>
+    <label>IO</label>
+    <description><![CDATA[Input/output parameters]]></description>
+    <image type="label">
+      <name>inputLesionLoad</name>
+      <label>Input Lesion Load</label>
+      <channel>input</channel>
+      <index>0</index>
+      <description><![CDATA[Input lesion load]]></description>
+    </image>
+    <image type="label">
+      <name>outputLesionLoad</name>
+      <label>Output Lesion Load</label>
+      <channel>output</channel>
+      <index>1</index>
+      <description><![CDATA[Output lesion load with lesion located in different parts of the brain]]></description>
+    </image>
+  </parameters>
+  <parameters>
+    <label>Lesion Location Parameters</label>
+    <description><![CDATA[Lesion location parameters]]></description>
+    <string-vector>
+      <name>inputLocationsFile</name>
+      <longflag>--priorsLocations</longflag>
+      <label>Input Priors Locations</label>
+      <description><![CDATA[A comma separated list of binary brain regions that corresponds to the desired lesion load separation. These MUST be in MNI space coordenates.]]></description>
+    </string-vector>
+   </parameters>
+</executable>
