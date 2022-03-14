@@ -404,7 +404,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                        Registration  - MNI to Native space                                    #
     #################################################################################################################
-    if platform.system() is "Windows":
+    if platform.system() == "Windows":
       if isBET:
         (read, MNITemplateNode) = slicer.util.loadVolume(path2files + '\\Resources\\LSSegmenter-Data\\MNI152_T1_1mm_brain.nii.gz',
                                                          {}, True)
@@ -439,7 +439,7 @@ class LSContrastEnhancerLogic(ScriptedLoadableModuleLogic):
 
     slicer.cli.run(slicer.modules.brainsfit, None, regParams, wait_for_completion=True)
 
-    if platform.system() is "Windows":
+    if platform.system() == "Windows":
       (read, MNIWM_thin_Label) = slicer.util.loadLabelVolume(path2files + '\\Resources\\LSSegmenter-Data\\MNI152_T1_1mm_WhiteMatter_thinner.nii.gz', {}, True)
     else:
       (read, MNIWM_thin_Label) = slicer.util.loadLabelVolume(path2files + '/Resources/LSSegmenter-Data/MNI152_T1_1mm_WhiteMatter_thinner.nii.gz', {}, True)
@@ -541,10 +541,10 @@ class LSContrastEnhancerTest(ScriptedLoadableModuleTest):
     for url,name,loader in downloads:
       filePath = slicer.app.temporaryPath + '/' + name
       if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
-        logging.info('Requesting download %s from %s...\n' % (name, url))
+        logging.info(f'Requesting download {name} from {url}...\n')
         urllib.urlretrieve(url, filePath)
       if loader:
-        logging.info('Loading %s...' % (name,))
+        logging.info(f'Loading {name}...')
         loader(filePath)
     self.delayDisplay('Finished with download and loading')
 
