@@ -33,6 +33,8 @@ add_subdirectory(WeightedEnhancementImageFilter)
 add_subdirectory(AutomaticFLAIRThreshold)
 add_subdirectory(LesionMapRefinement)
 add_subdirectory(AFTSegmenter)
+add_subdirectory(LesionLocalizer)
+add_subdirectory(LSLesionLocalizer)
 ## NEXT_MODULE
 
 #-----------------------------------------------------------------------------
