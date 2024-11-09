@@ -13,6 +13,8 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
+#include <stdlib.h>
+
 #include "itkImageFileWriter.h"
 
 #include "itkMaskImageFilter.h"
@@ -168,7 +170,7 @@ int DoIt( int argc, char * argv[], T )
         rescaledContrastMap->SetOutputMinimum(0.0);
 
         //Applying contrast weighting on the input image
-        InputPixelType contrastPercentage = std::abs(static_cast<InputPixelType>(weight))+static_cast<InputPixelType>(1);
+        InputPixelType contrastPercentage = static_cast<InputPixelType>(weight)+static_cast<InputPixelType>(1);
         typedef itk::MultiplyImageFilter< InputImageType >      MultiplyType;
         typename MultiplyType::Pointer rescaledBoost = MultiplyType::New();
         rescaledBoost->SetInput1(rescaledContrastMap->GetOutput());
