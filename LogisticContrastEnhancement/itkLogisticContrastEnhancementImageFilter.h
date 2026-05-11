@@ -45,41 +45,41 @@ public:
     typedef SmartPointer< const Self >                            ConstPointer;
 
     /** Method for creation through the object factory. */
-    itkNewMacro(Self)
+    itkNewMacro(Self);
 
     /** Run-time type information (and related methods). */
-    itkTypeMacro(LogisticContrastEnhancementImageFilter, ImageToImageFilter)
+    itkTypeMacro(LogisticContrastEnhancementImageFilter, ImageToImageFilter);
 
     typedef typename InputImageType::PixelType                 InputPixelType;
     typedef typename OutputImageType::PixelType                OutputPixelType;
 
     /** Set the maximum output. */
-    itkSetMacro(MaximumOutput, double)
+    itkSetMacro(MaximumOutput, double);
 
     /** Set the minimum output. */
-    itkSetMacro(MinimumOutput, double)
+    itkSetMacro(MinimumOutput, double);
 
     /** Set the Histogram bins. */
-    itkSetMacro(NumberOfBins, unsigned int)
+    itkSetMacro(NumberOfBins, unsigned int);
 
     /** Set the Tolerance. */
-    itkSetMacro(Tolerance, char)
+    itkSetMacro(Tolerance, char);
 
     /** Set the object area. */
-    itkSetMacro(FlipObjectArea, bool)
-    itkBooleanMacro(FlipObjectArea)
+    itkSetMacro(FlipObjectArea, bool);
+    itkBooleanMacro(FlipObjectArea);
 
     /** Set threshold method. */
-    itkSetMacro(ThresholdMethod, unsigned char)
+    itkSetMacro(ThresholdMethod, unsigned char);
 
-    itkGetMacro(FlipObjectArea, bool)
-    itkGetMacro(Alpha, double)
-    itkGetMacro(Beta, double)
-    itkGetMacro(MaximumOutput, double)
-    itkGetMacro(MinimumOutput, double)
-    itkGetMacro(NumberOfBins, unsigned int)
-    itkGetMacro(Tolerance, char)
-    itkGetMacro(ThresholdMethod, unsigned char)
+    itkGetMacro(FlipObjectArea, bool);
+    itkGetMacro(Alpha, double);
+    itkGetMacro(Beta, double);
+    itkGetMacro(MaximumOutput, double);
+    itkGetMacro(MinimumOutput, double);
+    itkGetMacro(NumberOfBins, unsigned int);
+    itkGetMacro(Tolerance, char);
+    itkGetMacro(ThresholdMethod, unsigned char);
 
 #ifdef ITK_USE_CONCEPT_CHECKING
     // Begin concept checking
